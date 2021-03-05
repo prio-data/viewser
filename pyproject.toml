@@ -1,0 +1,23 @@
+[tool.poetry]
+name = "viewser"
+version = "0.1.0"
+description = ""
+authors = ["peder2911 <pglandsverk@gmail.com>"]
+
+[tool.poetry.dependencies]
+python = "^3.8"
+requests = "^2.25.1"
+environs = "^9.3.1"
+pandas = "^1.2.3"
+pyarrow = "^3.0.0"
+fire = "^0.4.0"
+
+[tool.poetry.scripts]
+viewser = "viewser.cli:cli"
+
+[tool.poetry.dev-dependencies]
+pytest = "^5.2"
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
