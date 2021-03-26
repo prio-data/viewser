@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "viewser"
-version = "0.1.0"
+version = "0.2.0"
 description = ""
 authors = ["peder2911 <pglandsverk@gmail.com>"]
 
@@ -11,6 +11,9 @@ environs = "^9.3.1"
 pandas = "^1.2.3"
 pyarrow = "^3.0.0"
 fire = "^0.4.0"
+fitin = "^0.2.0"
+pydantic = "^1.8.1"
+crayons = "^0.4.0"
 
 [tool.poetry.scripts]
 viewser = "viewser.cli:cli"
