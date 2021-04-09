@@ -57,6 +57,8 @@ def put_queryset(name:str,queryset:models.Queryset):
     if str(response.status_code)[0] != "2":
         raise requests.HTTPError(response=response)
 
+update_queryset = lambda queryset: put_queryset(queryset.name,queryset)
+
 def list_querysets():
     url = remote_url("queryset")
     response = requests.get(url)

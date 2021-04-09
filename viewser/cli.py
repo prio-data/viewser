@@ -85,7 +85,7 @@ class Viewser():
         """
         Configure viewser
         """
-        settings_dict = {}
+        settings_dict = settings.DEFAULT_SETTINGS.copy() 
         for setting in settings.REQUIRED_SETTINGS:
             pretty_setting = setting.replace("_"," ").lower()
             settings_dict[setting] = input(f"Enter {pretty_setting}:\n>> ")

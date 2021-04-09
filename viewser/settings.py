@@ -10,6 +10,11 @@ REQUIRED_SETTINGS = (
             "REMOTE_URL",
         )
 
+DEFAULT_SETTINGS = {
+        "RETRY_FREQUENCY": 5, # seconds
+        "RETRIES": 80,
+    }
+
 config_dir = os.path.expanduser("~/.views")
 settings_file_path = os.path.join(config_dir,"config.json")
  
@@ -22,13 +27,13 @@ try:
     with open(settings_file_path) as f:
         config_dict = json.load(f)
 except FileNotFoundError:
-    logger.critical(crayons.yellow("Could not find config file, "
-            f"please run: {crayons.blue('viewser configure')}", bold=True))
+    logger.critical("Could not find config file, please run: 'viewser configure'")
     config_dict = {}
 
 config = fitin.seek_config([
     fitin.environs_resolver(),
-    fitin.dict_resolver(config_dict)
+    fitin.dict_resolver(config_dict),
+    fitin.dict_resolver(DEFAULT_SETTINGS)
     ])
 
 try:
