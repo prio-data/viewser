@@ -34,7 +34,7 @@ class Viewser():
             """
             with open(filename) as f:
                 data = json.load(f)
-                queryset = models.Queryset.parse_obj(data) 
+                queryset = models.Queryset.parse_obj(data)
             try:
                 crud.post_queryset(queryset)
             except HTTPError as httpe:
@@ -52,14 +52,14 @@ class Viewser():
             """
             with open(filename) as f:
                 data = json.load(f)
-                queryset = models.Queryset.parse_obj(data) 
+                queryset = models.Queryset.parse_obj(data)
             crud.put_queryset(queryset.name,queryset)
             return cli_utils.pprint_json(queryset.json())
 
         @staticmethod
         def list():
             """
-            List remote querysets 
+            List remote querysets
             """
             querysets = crud.list_querysets()
             return querysets
@@ -85,7 +85,7 @@ class Viewser():
         """
         Configure viewser
         """
-        settings_dict = settings.DEFAULT_SETTINGS.copy() 
+        settings_dict = settings.DEFAULT_SETTINGS.copy()
         for setting in settings.REQUIRED_SETTINGS:
             pretty_setting = setting.replace("_"," ").lower()
             settings_dict[setting] = input(f"Enter {pretty_setting}:\n>> ")
