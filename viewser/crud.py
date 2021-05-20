@@ -37,9 +37,11 @@ def check_parquet_response(response):
 
 def fetch_queryset(name,start_date:Optional[str]=None,end_date:Optional[str]=None):
     url = remote_url(os.path.join("data",name))
+
     query_parameters = {"start_date":start_date,"end_date":end_date}
     query_parameters = {q:p for q,p in query_parameters.items() if p is not None}
     url += "?"+urlencode(query_parameters)
+
     logging.debug("Requesting %s",url)
     response = requests.get(url)
     check_parquet_response(response)
