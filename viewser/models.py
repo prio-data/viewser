@@ -3,19 +3,19 @@ from typing import List
 import pydantic
 
 class Operation(pydantic.BaseModel):
-    base: str
-    path: str
-    args: List[str]
+    namespace: str
+    name: str
+    arguments: List[str]
 
 class Database(Operation):
-    base = "base"
-    args:List[str] = ["values"]
+    namespace = "base"
+    arguments: List[str] = ["values"]
 
 class Transformed(Operation):
-    base = "trf"
+    namespace = "trf"
 
 class Queryset(pydantic.BaseModel):
     loa: str
     name: str
-    theme: str
+    themes: List[str]
     operations: List[List[Operation]]
