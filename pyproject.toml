@@ -10,13 +10,14 @@ requests = "^2.25.1"
 environs = "^9.3.1"
 pandas = "^1.2.3"
 pyarrow = "^3.0.0"
-fire = "^0.4.0"
 fitin = "^0.2.0"
 pydantic = "^1.8.1"
 crayons = "^0.4.0"
+click = "^8.0.1"
+tabulate = "^0.8.9"
 
 [tool.poetry.scripts]
-viewser = "viewser.cli:cli"
+viewser = "viewser.cli:viewser"
 
 [tool.poetry.dev-dependencies]
 pytest = "^5.2"

@@ -1,97 +1,106 @@
-from datetime import date
+
 from typing import Optional
-import logging
-import json
-import fire
-from requests import HTTPError
-from . import settings,crud,models,cli_utils
+import io
+import click
+import tabulate
 
-logger = logging.getLogger(__name__)
-class Viewser():
-    class queryset():
-        @staticmethod
-        def fetch(queryset_name:str,outfile:str,
-                start_date:Optional[date]=None,end_date:Optional[date]=None):
-            """
-            Fetch data for a queryset, save it to outfile
-            """
-            try:
-                data = crud.fetch_queryset(queryset_name,start_date,end_date)
-            except crud.OperationPending:
-                return f"{queryset_name} is being compiled"
-            except HTTPError as httpe:
-                logger.critical("GET return an error (%s): %s",
-                        httpe.response.status_code,
-                        httpe.response.content.decode())
-                raise RuntimeError from httpe
-            data.to_parquet(outfile,compression="gzip")
-            return f"Fetched {data.shape[0]} rows, saved to {outfile}"
+@click.group()
+def viewser():
+    pass
 
-        @staticmethod
-        def load(filename):
-            """
-            Load a queryset from a JSON file
-            """
-            with open(filename) as f:
-                data = json.load(f)
-                queryset = models.Queryset.parse_obj(data)
-            try:
-                crud.post_queryset(queryset)
-            except HTTPError as httpe:
-                logger.critical("POST return an error (%s): %s",
-                        httpe.response.status_code,
-                        httpe.response.content.decode())
-                raise RuntimeError from httpe
-            else:
-                return cli_utils.pprint_json(queryset.json())
+@viewser.group(short_help="operations related to querysets")
+def queryset():
+    pass
 
-        @staticmethod
-        def put(filename:str):
-            """
-            Update queryset
-            """
-            with open(filename) as f:
-                data = json.load(f)
-                queryset = models.Queryset.parse_obj(data)
-            crud.put_queryset(queryset.name,queryset)
-            return cli_utils.pprint_json(queryset.json())
+@queryset.command(short_help="fetch data for a queryset")
+@click.argument("name")
+@click.argument("outfile", type=click.File("wb"))
+def fetch(name:str, outfile:io.BufferedWriter):
+    """
+    Fetch data for a queryset named NAME from ViEWS cloud and save it to OUT_FILE
+    """
+    click.echo(f"Fetching queryset {name} to file {outfile.name}")
 
-        @staticmethod
-        def list():
-            """
-            List remote querysets
-            """
-            querysets = crud.list_querysets()
-            return querysets
+@queryset.command(short_help="upload a queryset")
+@click.argument("queryset_file", type=click.File("r","utf-8"))
+@click.option("-n", "--name", type=str)
+@click.option("--overwrite/--no-overwrite",default = False)
+def upload(
+        queryset_file: io.BufferedReader,
+        name: Optional[str],
+        overwrite: bool):
+    """
+    Upload a queryset defined in a JSON file. The name of the queryset can be
+    overridden with the --name flag.
+    """
+    if name is not None:
+        click.echo(f"Renaming to {name}")
 
-        @staticmethod
-        def show(name:str):
-            """
-            Show detailed information about a queryset
-            """
-            detail = crud.show_queryset(name)
-            return detail
+    if overwrite:
+        click.echo("Overwriting!")
 
-        @staticmethod
-        def delete(name:str):
-            """
-            Show detailed information about a queryset
-            """
-            detail = crud.delete_queryset(name)
-            return detail
+    click.echo(f"Uploading queryset from file {queryset_file.name}")
 
-    @staticmethod
-    def configure():
-        """
-        Configure viewser
-        """
-        settings_dict = settings.DEFAULT_SETTINGS.copy()
-        for setting in settings.REQUIRED_SETTINGS:
-            pretty_setting = setting.replace("_"," ").lower()
-            settings_dict[setting] = input(f"Enter {pretty_setting}:\n>> ")
-        with open(settings.settings_file_path,"w") as f:
-            json.dump(settings_dict,f)
-        return json.dumps(settings_dict,indent=4)
+@queryset.command(short_help="show a list of available querysets")
+@click.option("--json",default=False, help="output results as json")
+def list(json: bool): # pylint: disable=redefined-builtin
+    """
+    Show a list of available querysets.
+    """
+    click.echo(tabulate.tabulate(
+            [["a","foo",1],["b","bar",2],["c","baz",3]],
+            headers = ["user","name", "date"],
+        ))
 
-def cli():
-    fire.Fire(Viewser)
+@queryset.command(short_help="show details about a queryset")
+@click.option("--json", default=False, help="output results as json")
+@click.argument("name", type=str)
+def show(name: str, json: bool):
+    """
+    Show detailed information about a queryset
+    """
+    click.echo(f"Queryset {name}...")
+
+@queryset.command(short_help="delete a queryset")
+@click.confirmation_option(prompt="Are you sure?")
+@click.argument("name", type=str)
+def delete(name: str):
+    """
+    Delete a queryset.
+    """
+    click.echo(f"Deleting Queryset {name}")
+
+@viewser.group(short_help="configure viewser")
+def configure():
+    """
+    Configure viewser
+    """
+    pass
+
+@configure.command(short_help="interactively configure viewser")
+def interactive():
+    """
+    Interactively configure viewser (useful for first-time config)
+    """
+    click.echo("Configuring...")
+
+@configure.command(short_help="set a configuration value")
+@click.argument("name", type=str)
+@click.argument("value", type=str)
+@click.option("--override/--no-override",default=True)
+def set(name: str, value: str, override: bool):
+    """
+    Set a configuration value
+    """
+    if override:
+        click.echo("Overriding existing value")
+
+    click.echo(f"Setting {name} to {value}")
+
+@configure.command(short_help="get a configuration value")
+@click.argument("name", type=str)
+def get(name: str):
+    """
+    Get a configuration value
+    """
+    click.echo(f"Getting config value {name}")
