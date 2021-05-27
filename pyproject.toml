@@ -15,6 +15,7 @@ pydantic = "^1.8.1"
 crayons = "^0.4.0"
 click = "^8.0.1"
 tabulate = "^0.8.9"
+toolz = "^0.11.1"
 
 [tool.poetry.scripts]
 viewser = "viewser.cli:viewser"
