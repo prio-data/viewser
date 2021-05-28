@@ -1,3 +1,4 @@
+import json
 import os
 from typing import Optional
 import logging
@@ -9,7 +10,7 @@ from . import settings,models
 
 logger = logging.getLogger(__name__)
 
-remote_url = lambda path: os.path.join(settings.config("REMOTE_URL"),path)
+remote_url = lambda path: os.path.join(settings.config_get("REMOTE_URL"),path)
 
 class OperationPending(Exception):
     pass
@@ -50,6 +51,7 @@ def fetch_queryset(name,start_date:Optional[str]=None,end_date:Optional[str]=Non
 def post_queryset(queryset: models.Queryset):
     url = remote_url("queryset")
     response = requests.post(url,data=queryset.json())
+
     if str(response.status_code)[0] != "2":
         raise requests.HTTPError(response=response)
 
@@ -66,7 +68,7 @@ def list_querysets():
     response = requests.get(url)
     if response.status_code != 200:
         raise requests.HTTPError(response=response)
-    return response.content.decode()
+    return response.json() 
 
 def delete_queryset(name):
     url = remote_url(os.path.join("queryset",name))
@@ -80,7 +82,7 @@ def show_queryset(name:str):
     response = requests.get(url)
     if response.status_code != 200:
         raise requests.HTTPError(response=response)
-    return response.content.decode()
+    return response.json()
 
 
 if __name__ == "__main__":

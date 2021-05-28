@@ -1,10 +1,12 @@
 
+import json
 from datetime import datetime
 from typing import Optional
 import io
 import click
 import tabulate
-from . import crud, settings
+import requests
+from . import crud, settings, models
 
 @click.group()
 def viewser():
@@ -27,23 +29,45 @@ def queryset_fetch(
     """
     Fetch data for a queryset named NAME from ViEWS cloud and save it to OUT_FILE
     """
-    try:
-        start_date,end_date = [dt.date() for dt in (start_date,end_date) if dt is not None]
-    except ValueError:
-        pass
+    crud.fetch_queryset(name,start_date,end_date).to_parquet(out_file)
 
-    msg = f"Fetching queryset {name} to file {out_file.name}"
-    if start_date is not None:
-        msg += f" {start_date}"
-    if end_date is not None:
-        msg += f" {end_date}"
-    click.echo(msg)
+@queryset.command(name="list", short_help="show a list of available querysets")
+@click.option("--as-json/--as-table", default=False, help="output results as json")
+def queryset_list(as_json: bool):
+    """
+    Show a list of available querysets.
+    """
+
+    querysets = crud.list_querysets()
+    if as_json:
+        click.echo(querysets)
+    else:
+        click.echo(tabulate.tabulate([[qs] for qs in querysets["querysets"]],headers=["name"]))
+
+@queryset.command(name="show", short_help="show details about a queryset")
+@click.argument("name", type=str)
+def queryset_show(name: str):
+    """
+    Show detailed information about a queryset
+    """
+    qs = crud.show_queryset(name)
+    click.echo(json.dumps(qs, indent=4))
+
+@queryset.command(name="delete", short_help="delete a queryset")
+@click.confirmation_option(prompt="Delete queryset?")
+@click.argument("name", type=str)
+def queryset_delete(name: str):
+    """
+    Delete a queryset.
+    """
+    crud.delete_queryset(name)
+    click.echo(f"Deleted {name}")
 
 @queryset.command(name="upload", short_help="upload a queryset")
 @click.argument("queryset_file", type=click.File("r","utf-8"))
 @click.option("-n", "--name", type=str)
 @click.option("--overwrite/--no-overwrite",default = False)
-def upload_queryset(
+def queryset_upload(
         queryset_file: io.BufferedReader,
         name: Optional[str],
         overwrite: bool):
@@ -57,36 +81,11 @@ def upload_queryset(
     if overwrite:
         click.echo("Overwriting!")
 
-    click.echo(f"Uploading queryset from file {queryset_file.name}")
-
-@queryset.command(name="list", short_help="show a list of available querysets")
-@click.option("--json",default=False, help="output results as json")
-def queryset_list(json: bool):
-    """
-    Show a list of available querysets.
-    """
-    click.echo(tabulate.tabulate(
-            [["a","foo",1],["b","bar",2],["c","baz",3]],
-            headers = ["user","name", "date"],
-        ))
-
-@queryset.command(name="show", short_help="show details about a queryset")
-@click.option("--json", default=False, help="output results as json")
-@click.argument("name", type=str)
-def queryset_show(name: str, json: bool):
-    """
-    Show detailed information about a queryset
-    """
-    click.echo(f"Queryset {name}...")
-
-@queryset.command(name="delete", short_help="delete a queryset")
-@click.confirmation_option(prompt="Delete queryset?")
-@click.argument("name", type=str)
-def queryset_delete(name: str):
-    """
-    Delete a queryset.
-    """
-    click.echo(f"Deleting Queryset {name}")
+    qs = models.Queryset(**json.load(queryset_file))
+    try:
+        click.echo(crud.post_queryset(qs))
+    except requests.HTTPError as httpe:
+        click.echo(httpe.response.content)
 
 @viewser.group(name="config", short_help="configure viewser")
 def config():
