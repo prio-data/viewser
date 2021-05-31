@@ -6,7 +6,8 @@ import io
 import click
 import tabulate
 import requests
-from . import crud, settings, models
+import views_schema
+from . import settings, operations
 
 @click.group()
 def viewser():
@@ -29,7 +30,7 @@ def queryset_fetch(
     """
     Fetch data for a queryset named NAME from ViEWS cloud and save it to OUT_FILE
     """
-    crud.fetch_queryset(name,start_date,end_date).to_parquet(out_file)
+    operations.fetch(name,start_date,end_date).to_parquet(out_file)
 
 @queryset.command(name="list", short_help="show a list of available querysets")
 @click.option("--as-json/--as-table", default=False, help="output results as json")
@@ -38,7 +39,7 @@ def queryset_list(as_json: bool):
     Show a list of available querysets.
     """
 
-    querysets = crud.list_querysets()
+    querysets = operations.list_querysets()
     if as_json:
         click.echo(querysets)
     else:
@@ -50,7 +51,7 @@ def queryset_show(name: str):
     """
     Show detailed information about a queryset
     """
-    qs = crud.show_queryset(name)
+    qs = operations.show_queryset(name)
     click.echo(json.dumps(qs, indent=4))
 
 @queryset.command(name="delete", short_help="delete a queryset")
@@ -60,7 +61,7 @@ def queryset_delete(name: str):
     """
     Delete a queryset.
     """
-    crud.delete_queryset(name)
+    operations.delete_queryset(name)
     click.echo(f"Deleted {name}")
 
 @queryset.command(name="upload", short_help="upload a queryset")
@@ -81,9 +82,9 @@ def queryset_upload(
     if overwrite:
         click.echo("Overwriting!")
 
-    qs = models.Queryset(**json.load(queryset_file))
+    qs = views_schema.Queryset(**json.load(queryset_file))
     try:
-        click.echo(crud.post_queryset(qs))
+        click.echo(operations.post_queryset(qs))
     except requests.HTTPError as httpe:
         click.echo(httpe.response.content)
 

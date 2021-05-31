@@ -1,7 +1,6 @@
 import os
 import logging
 import json
-import crayons
 import fitin
 
 from toolz.functoolz import compose,curry
@@ -15,10 +14,17 @@ REQUIRED_SETTINGS = (
 DEFAULT_SETTINGS = {
         "RETRY_FREQUENCY": 5, # seconds
         "RETRIES": 80,
+
+        "HANDSHAKE_PATH": "",
     }
 
 CONFIG_DIR = os.path.expanduser("~/.views")
 SETTINGS_FILE_PATH = os.path.join(CONFIG_DIR, "config.json")
+
+class ConfigurationError(Exception):
+    """
+    Raised when something is (assumed to be) misconfigured
+    """
 
 def load_config_from_file():
     with open(SETTINGS_FILE_PATH) as f:
