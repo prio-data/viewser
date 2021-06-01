@@ -28,10 +28,12 @@ def check_latest_version():
     if latest_known < latest_actual:
         settings.config_set_in_file("LATEST_KNOWN_VERSION",latest_actual)
 
-    if current <= latest_known <= latest_actual:
+    if current < latest_actual:
         logger.warning(
                 f"There is a newer version of viewser available ({latest_actual}), "
-                "download with pip install --upgrade viewser")
+                "download with pip install --upgrade viewser. "
+                f"Current version is {current}."
+                )
     else:
         logger.debug("Up to date!")
 
