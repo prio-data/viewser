@@ -69,8 +69,16 @@ def queryset_delete(name: str):
     """
     Delete a queryset.
     """
-    operations.delete_queryset(name)
-    click.echo(f"Deleted {name}")
+    try:
+        operations.delete_queryset(name)
+        click.echo(f"Deleted {name}")
+    except requests.HTTPError as httpe:
+        raise click.ClickException(
+                "Delete operation returned "
+                f"{httpe.response.status_code}: "
+                f"'{httpe.response.content.decode()}'"
+            )
+
 
 @queryset.command(name="upload", short_help="upload a queryset")
 @click.argument("queryset_file", type=click.File("r","utf-8"))

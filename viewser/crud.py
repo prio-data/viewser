@@ -55,7 +55,7 @@ def delete_queryset(remotes_api: remotes.Api, name):
     """
     Delete a named queryset
     """
-    return remotes_api.http("DELETE",("queryset",name),{}).json()
+    return remotes_api.http("DELETE",("queryset",name),{})
 
 def show_queryset(remotes_api: remotes.Api, name:str):
     """

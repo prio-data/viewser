@@ -37,10 +37,11 @@ class Api:
 
     @staticmethod
     def check_response(response):
-        if response.status_code == 200:
-            pass
-        elif response.status_code == 202:
+        if response.status_code == 202:
             raise OperationPending
+
+        if str(response.status_code)[0] == "2":
+            pass
         elif str(response.status_code)[0] == "5":
             raise RemoteError(
                     f"{response.url} returned {response.status_code}: "
