@@ -13,8 +13,16 @@ from . import settings, operations, remotes
 
 logger = logging.getLogger(__name__)
 
+def print_version(ctx, _, value):
+    if not value or ctx.resilient_parsing:
+        return
+    click.echo(version("viewser"))
+    ctx.exit()
+
+
 @click.group()
 @click.option("--debug/--no-debug", default=False, help="Display debug logging messages")
+@click.option("--version", is_flag = True, callback = print_version, expose_value = False, is_eager= True)
 def viewser(debug: bool):
     if debug:
         logging.getLogger().setLevel(logging.DEBUG)
