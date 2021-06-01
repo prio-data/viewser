@@ -1,97 +1,183 @@
-from datetime import date
-from typing import Optional
+
+from importlib.metadata import version
 import logging
 import json
-import fire
-from requests import HTTPError
-from . import settings,crud,models,cli_utils
+from datetime import datetime
+from typing import Optional
+import io
+import click
+import tabulate
+import requests
+import views_schema
+from . import settings, operations, remotes
 
 logger = logging.getLogger(__name__)
-class Viewser():
-    class queryset():
-        @staticmethod
-        def fetch(queryset_name:str,outfile:str,
-                start_date:Optional[date]=None,end_date:Optional[date]=None):
-            """
-            Fetch data for a queryset, save it to outfile
-            """
-            try:
-                data = crud.fetch_queryset(queryset_name,start_date,end_date)
-            except crud.OperationPending:
-                return f"{queryset_name} is being compiled"
-            except HTTPError as httpe:
-                logger.critical("GET return an error (%s): %s",
-                        httpe.response.status_code,
-                        httpe.response.content.decode())
-                raise RuntimeError from httpe
-            data.to_parquet(outfile,compression="gzip")
-            return f"Fetched {data.shape[0]} rows, saved to {outfile}"
 
-        @staticmethod
-        def load(filename):
-            """
-            Load a queryset from a JSON file
-            """
-            with open(filename) as f:
-                data = json.load(f)
-                queryset = models.Queryset.parse_obj(data)
-            try:
-                crud.post_queryset(queryset)
-            except HTTPError as httpe:
-                logger.critical("POST return an error (%s): %s",
-                        httpe.response.status_code,
-                        httpe.response.content.decode())
-                raise RuntimeError from httpe
-            else:
-                return cli_utils.pprint_json(queryset.json())
+@click.group()
+@click.option("--debug/--no-debug", default=False, help="Display debug logging messages")
+def viewser(debug: bool):
+    if debug:
+        logging.getLogger().setLevel(logging.DEBUG)
 
-        @staticmethod
-        def put(filename:str):
-            """
-            Update queryset
-            """
-            with open(filename) as f:
-                data = json.load(f)
-                queryset = models.Queryset.parse_obj(data)
-            crud.put_queryset(queryset.name,queryset)
-            return cli_utils.pprint_json(queryset.json())
+@viewser.group(name="queryset", short_help="operations related to querysets")
+def queryset():
+    pass
 
-        @staticmethod
-        def list():
-            """
-            List remote querysets
-            """
-            querysets = crud.list_querysets()
-            return querysets
+@queryset.command(name="fetch", short_help="fetch data for a queryset")
+@click.argument("name")
+@click.argument("out-file", type=click.File("wb"))
+@click.option("-s","--start-date", type=click.DateTime())
+@click.option("-e","--end-date", type=click.DateTime())
+def queryset_fetch(
+        name:str,
+        out_file:io.BufferedWriter,
+        start_date: Optional[datetime],
+        end_date: Optional[datetime]):
+    """
+    Fetch data for a queryset named NAME from ViEWS cloud and save it to OUT_FILE
+    """
+    click.echo("Fetching queryset {name}...")
+    operations.fetch(name,start_date,end_date).to_parquet(out_file)
+    click.echo("Saved to {out_file}")
 
-        @staticmethod
-        def show(name:str):
-            """
-            Show detailed information about a queryset
-            """
-            detail = crud.show_queryset(name)
-            return detail
+@queryset.command(name="list", short_help="show a list of available querysets")
+@click.option("--as-json/--as-table", default=False, help="output results as json")
+def queryset_list(as_json: bool):
+    """
+    Show a list of available querysets.
+    """
 
-        @staticmethod
-        def delete(name:str):
-            """
-            Show detailed information about a queryset
-            """
-            detail = crud.delete_queryset(name)
-            return detail
+    querysets = operations.list_querysets()
+    if as_json:
+        click.echo(querysets)
+    else:
+        click.echo(tabulate.tabulate([[qs] for qs in querysets["querysets"]],headers=["name"]))
 
-    @staticmethod
-    def configure():
-        """
-        Configure viewser
-        """
-        settings_dict = settings.DEFAULT_SETTINGS.copy()
-        for setting in settings.REQUIRED_SETTINGS:
-            pretty_setting = setting.replace("_"," ").lower()
-            settings_dict[setting] = input(f"Enter {pretty_setting}:\n>> ")
-        with open(settings.settings_file_path,"w") as f:
-            json.dump(settings_dict,f)
-        return json.dumps(settings_dict,indent=4)
+@queryset.command(name="show", short_help="show details about a queryset")
+@click.argument("name", type=str)
+def queryset_show(name: str):
+    """
+    Show detailed information about a queryset
+    """
+    qs = operations.show_queryset(name)
+    click.echo(json.dumps(qs, indent=4))
 
-def cli():
-    fire.Fire(Viewser)
+@queryset.command(name="delete", short_help="delete a queryset")
+@click.confirmation_option(prompt="Delete queryset?")
+@click.argument("name", type=str)
+def queryset_delete(name: str):
+    """
+    Delete a queryset.
+    """
+    operations.delete_queryset(name)
+    click.echo(f"Deleted {name}")
+
+@queryset.command(name="upload", short_help="upload a queryset")
+@click.argument("queryset_file", type=click.File("r","utf-8"))
+@click.option("-n", "--name", type=str)
+@click.option("--overwrite/--no-overwrite",default = False)
+def queryset_upload(
+        queryset_file: io.BufferedReader,
+        name: Optional[str],
+        overwrite: bool):
+    """
+    Upload a queryset defined in a JSON file. The name of the queryset can be
+    overridden with the --name flag.
+    """
+    if name is not None:
+        click.echo(f"Renaming to {name}")
+
+    if overwrite:
+        click.echo("Overwriting!")
+
+    qs = views_schema.Queryset(**json.load(queryset_file))
+    try:
+        click.echo(operations.post_queryset(qs))
+    except requests.HTTPError as httpe:
+        click.echo(httpe.response.content)
+
+@viewser.group(name="config", short_help="configure viewser")
+def config():
+    """
+    Configure viewser
+    """
+
+@config.command(name="interactive", short_help="interactively configure viewser")
+def config_interactive():
+    """
+    Interactively configure viewser (useful for first-time config)
+    """
+    settings.configure_interactively()
+    click.echo("All done!")
+
+@config.command(name="set", short_help="set a configuration value")
+@click.argument("name", type=str)
+@click.argument("value", type=str)
+@click.option("--override/--no-override",default=True)
+def config_set(name: str, value: str, override: bool): # pylint: disable=redefined-builtin
+    """
+    Set a configuration value.
+    """
+
+    overrides = True
+    try:
+        settings.config_get(name)
+    except KeyError:
+        overrides = False
+
+    if not override and overrides:
+        click.echo(f"Setting {name} already set, override not specified (see --help)")
+        return
+
+    settings.config_set_in_file(name,value)
+    click.echo(f"{name}: {value}")
+
+@config.command(name="get", short_help="get a configuration value")
+@click.argument("name", type=str)
+def config_get(name: str):
+    """
+    Get a configuration value.
+    """
+    click.echo(f"{name}: {settings.config_get(name)}")
+
+@config.command(name="reset", short_help="reset default config values")
+@click.confirmation_option(prompt="Reset config?")
+def config_reset():
+    """
+    Reset config, writing default values over current values.
+    """
+    settings.reset_config_file_defaults()
+    click.echo("Config file reset")
+
+@config.command(name="list", short_help="show all configuration settings")
+def config_list():
+    """
+    Show all current configuration values
+    """
+    click.echo(tabulate.tabulate(settings.config_dict.items()))
+
+@viewser.group(name="help", short_help="commands for finding documentation")
+def get_help():
+    """
+    Commands related to finding documentation.
+    """
+
+@get_help.command(name = "wiki")
+def wiki():
+    """
+    Open the viewser wiki in a new browser window, which contains all you need
+    to know about using viewser.
+    """
+    remotes.browser(settings.config_get("REPO_URL"),"wiki")
+
+@get_help.command(name = "issue")
+def issue():
+    """
+    Opens the viewser "new issue" page in a new browser window.
+    """
+    remotes.browser(
+            settings.config_get("REPO_URL"),
+            "issue","new",
+            body=f"My viewser version is {version('viewser')}"
+        )
+

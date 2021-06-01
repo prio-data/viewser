@@ -1,87 +1,64 @@
-import os
 from typing import Optional
 import logging
 from io import BytesIO
-from urllib.parse import urlencode
-import requests
 import pandas as pd
-from . import settings,models
+import views_schema
+from . import remotes
 
 logger = logging.getLogger(__name__)
 
-remote_url = lambda path: os.path.join(settings.config("REMOTE_URL"),path)
-
-class OperationPending(Exception):
-    pass
-
-class RemoteError(Exception):
-    pass
-
-def check_response(response):
-    if response.status_code == 200:
-        pass
-    elif response.status_code == 202:
-        raise OperationPending
-    else:
-        raise requests.HTTPError(response=response)
-
 def check_parquet_response(response):
-    check_response(response)
     if response.headers.get("Content-Type") == "application/octet-stream":
         pass
     else:
-        raise RemoteError(
+        raise remotes.RemoteError(
                 f"Remote {response.url} returned wrong content type: "
                 f"{response.headers.get('Content-Type')}"
                 )
 
-def fetch_queryset(name,start_date:Optional[str]=None,end_date:Optional[str]=None):
-    url = remote_url(os.path.join("data",name))
+def fetch_queryset(
+        remotes_api: remotes.Api,
+        name,
+        start_date:Optional[str]=None,
+        end_date:Optional[str]=None):
 
-    query_parameters = {"start_date":start_date,"end_date":end_date}
-    query_parameters = {q:p for q,p in query_parameters.items() if p is not None}
-    url += "?"+urlencode(query_parameters)
+    response = remotes_api.http(
+            "GET",
+            ("data",name),
+            {"start_date":start_date,"end_date": end_date}
+            )
 
-    logging.debug("Requesting %s",url)
-    response = requests.get(url)
     check_parquet_response(response)
     return pd.read_parquet(BytesIO(response.content))
 
-def post_queryset(queryset: models.Queryset):
-    url = remote_url("queryset")
-    response = requests.post(url,data=queryset.json())
-    if str(response.status_code)[0] != "2":
-        raise requests.HTTPError(response=response)
+def post_queryset(remotes_api: remotes.Api, queryset: views_schema.Queryset):
+    """
+    Post a queryset to the remote API
+    """
+    return remotes_api.http("POST",("queryset",),{},data=queryset.json()).json()
 
-def put_queryset(name:str,queryset:models.Queryset):
-    url = remote_url(os.path.join("queryset",name))
-    response = requests.put(url,data=queryset.json())
-    if str(response.status_code)[0] != "2":
-        raise requests.HTTPError(response=response)
+def put_queryset(remotes_api: remotes.Api, name:str,queryset: views_schema.Queryset):
+    """
+    Put a queryset to the remote API, overwriting the existing queryset
+    """
+    return remotes_api.http("PUT",("queryset",name),{},data=queryset.json()).json()
 
-update_queryset = lambda queryset: put_queryset(queryset.name,queryset)
+update_queryset = lambda remotes_api, queryset: put_queryset(remotes_api, queryset.name, queryset)
 
-def list_querysets():
-    url = remote_url("queryset")
-    response = requests.get(url)
-    if response.status_code != 200:
-        raise requests.HTTPError(response=response)
-    return response.content.decode()
+def list_querysets(remotes_api: remotes.Api):
+    """
+    List available querysets
+    """
+    return remotes_api.http("GET",("queryset",),{}).json()
 
-def delete_queryset(name):
-    url = remote_url(os.path.join("queryset",name))
-    response = requests.delete(url)
-    if str(response.status_code)[0] != "2":
-        raise requests.HTTPError(response=response)
-    return response.content.decode()
+def delete_queryset(remotes_api: remotes.Api, name):
+    """
+    Delete a named queryset
+    """
+    return remotes_api.http("DELETE",("queryset",name),{}).json()
 
-def show_queryset(name:str):
-    url = remote_url(os.path.join("queryset",name))
-    response = requests.get(url)
-    if response.status_code != 200:
-        raise requests.HTTPError(response=response)
-    return response.content.decode()
-
-
-if __name__ == "__main__":
-    fetch_queryset("test_set_quick")
+def show_queryset(remotes_api: remotes.Api, name:str):
+    """
+    Show details about a queryset
+    """
+    return remotes_api.http("GET",("queryset",name),{}).json()
