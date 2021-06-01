@@ -40,7 +40,10 @@ class Api:
         elif response.status_code == 202:
             raise OperationPending
         elif str(response.status_code)[0] == "5":
-            raise RemoteError(response.content.decode())
+            raise RemoteError(
+                    f"{response.url} returned {response.status_code}: "
+                    f"{response.content.decode()}"
+                    )
         else:
             raise requests.HTTPError(response=response)
 

@@ -21,11 +21,6 @@ DEFAULT_SETTINGS = {
 CONFIG_DIR = os.path.expanduser("~/.views")
 SETTINGS_FILE_PATH = os.path.join(CONFIG_DIR, "config.json")
 
-class ConfigurationError(Exception):
-    """
-    Raised when something is (assumed to be) misconfigured
-    """
-
 def load_config_from_file():
     with open(SETTINGS_FILE_PATH) as f:
         return json.load(f)
