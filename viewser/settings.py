@@ -1,4 +1,5 @@
 import os
+import functools
 import logging
 import json
 import fitin
@@ -16,10 +17,24 @@ DEFAULT_SETTINGS = {
         "RETRIES": 80,
 
         "HANDSHAKE_PATH": "",
+        "REPO_URL": "https://www.github.com/prio-data/viewser",
+        "LATEST_KNOWN_VERSION": "0.0.0"
     }
 
 CONFIG_DIR = os.path.expanduser("~/.views")
 SETTINGS_FILE_PATH = os.path.join(CONFIG_DIR, "config.json")
+
+def log_decorator(msg,level = "debug"):
+    def wrapper(fn):
+        functools.wraps(fn)
+        def inner(*args,**kwargs):
+            getattr(logger,level)(msg)
+            return fn(*args,**kwargs)
+        return inner
+    return wrapper
+
+
+
 
 def load_config_from_file():
     with open(SETTINGS_FILE_PATH) as f:
@@ -42,7 +57,7 @@ config_set = lambda load,save,key,value: compose(
 config_set_in_file = curry(
         config_set,
         load_config_from_file,
-        save_config_to_file
+        log_decorator("Altering config file")(save_config_to_file)
         )
 
 def reset_defaults(load,save):

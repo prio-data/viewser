@@ -1,11 +1,13 @@
 """
 High-level operations intended for users
 """
+from importlib.metadata import version
 from datetime import date
 from typing import Optional
 import logging
 import time
-from toolz.functoolz import curry
+from functools import wraps
+from toolz.functoolz import curry, compose
 from requests import HTTPError
 import views_schema
 from . import settings,crud,remotes,checks
@@ -13,6 +15,38 @@ from . import settings,crud,remotes,checks
 logger = logging.getLogger(__name__)
 
 remotes_api = remotes.Api(settings.config_get("REMOTE_URL"),{})
+
+
+get_latest_version = curry(remotes.latest_pyproject_version, settings.config_get("REPO_URL"))
+check_remote_version = curry(checks.check_remote_version, remotes_api)
+
+def check_latest_version():
+    latest_known = settings.config_get("LATEST_KNOWN_VERSION")
+    latest_actual = get_latest_version()
+    current = version("viewser")
+
+    if latest_known < latest_actual:
+        settings.config_set_in_file("LATEST_KNOWN_VERSION",latest_actual)
+
+    if current <= latest_known <= latest_actual:
+        logger.warning(
+                f"There is a newer version of viewser available ({latest_actual}), "
+                "download with pip install --upgrade viewser")
+    else:
+        logger.debug("Up to date!")
+
+
+def check_remotes(fn):
+    """
+    Wrapper used for version checking when calling remote APIs
+    """
+
+    @wraps(fn)
+    def inner(*args,**kwargs):
+        check_latest_version()
+        check_remote_version()
+        return fn(*args,**kwargs)
+    return inner
 
 def publish(queryset: views_schema.Queryset):
     """
@@ -52,22 +86,11 @@ def fetch(queryset_name:str, start_date: Optional[date] = None, end_date: Option
             retries += 1
             time.sleep(settings.config_get("RETRY_FREQUENCY"))
 
-post_queryset = checks.check_remote_version(remotes_api)(
-        curry(crud.post_queryset, remotes_api)
-    )
 
-put_queryset = checks.check_remote_version(remotes_api)(
-        curry(crud.put_queryset, remotes_api)
-    )
+api_call = lambda fn: check_remotes(curry(fn, remotes_api))
 
-list_querysets = checks.check_remote_version(remotes_api)(
-        curry(crud.list_querysets, remotes_api)
-    )
-
-delete_queryset = checks.check_remote_version(remotes_api)(
-        curry(crud.delete_queryset, remotes_api)
-    )
-
-show_queryset = checks.check_remote_version(remotes_api)(
-        curry(crud.show_queryset, remotes_api)
-    )
+post_queryset = api_call(crud.post_queryset)
+put_queryset = api_call(crud.put_queryset)
+list_querysets = api_call(crud.list_querysets)
+delete_queryset = api_call(crud.delete_queryset)
+show_queryset = api_call(crud.show_queryset)
