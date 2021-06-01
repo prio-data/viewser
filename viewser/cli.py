@@ -1,4 +1,5 @@
 
+import logging
 import json
 from datetime import datetime
 from typing import Optional
@@ -9,9 +10,13 @@ import requests
 import views_schema
 from . import settings, operations
 
+logger = logging.getLogger(__name__)
+
 @click.group()
-def viewser():
-    pass
+@click.option("--debug/--no-debug", default=False, help="Display debug logging messages")
+def viewser(debug: bool):
+    if debug:
+        logging.getLogger().setLevel(logging.DEBUG)
 
 @viewser.group(name="queryset", short_help="operations related to querysets")
 def queryset():
@@ -30,7 +35,9 @@ def queryset_fetch(
     """
     Fetch data for a queryset named NAME from ViEWS cloud and save it to OUT_FILE
     """
+    click.echo("Fetching queryset {name}...")
     operations.fetch(name,start_date,end_date).to_parquet(out_file)
+    click.echo("Saved to {out_file}")
 
 @queryset.command(name="list", short_help="show a list of available querysets")
 @click.option("--as-json/--as-table", default=False, help="output results as json")
