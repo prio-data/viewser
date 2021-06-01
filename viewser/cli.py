@@ -1,4 +1,5 @@
 
+from importlib.metadata import version
 import logging
 import json
 from datetime import datetime
@@ -8,7 +9,7 @@ import click
 import tabulate
 import requests
 import views_schema
-from . import settings, operations
+from . import settings, operations, remotes
 
 logger = logging.getLogger(__name__)
 
@@ -154,4 +155,29 @@ def config_list():
     Show all current configuration values
     """
     click.echo(tabulate.tabulate(settings.config_dict.items()))
+
+@viewser.group(name="help", short_help="commands for finding documentation")
+def get_help():
+    """
+    Commands related to finding documentation.
+    """
+
+@get_help.command(name = "wiki")
+def wiki():
+    """
+    Open the viewser wiki in a new browser window, which contains all you need
+    to know about using viewser.
+    """
+    remotes.browser(settings.config_get("REPO_URL"),"wiki")
+
+@get_help.command(name = "issue")
+def issue():
+    """
+    Opens the viewser "new issue" page in a new browser window.
+    """
+    remotes.browser(
+            settings.config_get("REPO_URL"),
+            "issue","new",
+            body=f"My viewser version is {version('viewser')}"
+        )
 

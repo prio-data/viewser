@@ -1,7 +1,9 @@
 
-import logging
 import os
-from urllib.parse import urlencode
+import webbrowser
+import logging
+from urllib import parse
+import toml
 import requests
 
 logger = logging.getLogger(__name__)
@@ -21,7 +23,7 @@ def check_response(response):
         raise requests.HTTPError(response=response)
 
 class Api:
-    def __init__(self,url,paths):
+    def __init__(self,url,paths=None):
         self._base_url = url
         self.paths = paths
 
@@ -30,11 +32,11 @@ class Api:
 
         kwargs = {k:v for k,v in kwargs.items() if v is not None}
         if kwargs:
-            url += "?" + urlencode(kwargs)
+            url += "?" + parse.urlencode(kwargs)
         return url
 
     @staticmethod
-    def _check_response(response):
+    def check_response(response):
         if response.status_code == 200:
             pass
         elif response.status_code == 202:
@@ -51,5 +53,24 @@ class Api:
         url = self.url(*path,**parameters)
         logger.debug("Requesting url %s",url)
         rsp = requests.request(method,url,*args,**kwargs)
-        self._check_response(rsp)
+        self.check_response(rsp)
         return rsp
+
+def browser(base,*args,**kwargs):
+    webbrowser.open(Api(base).url(*args,**kwargs))
+
+def latest_pyproject_version(repo_url):
+    """
+    Gets the latest version of the CLI from Github
+    """
+    repo_path = parse.urlparse(repo_url).path
+    url = parse.urljoin("https://raw.githubusercontent.com/",repo_path)
+    url = os.path.join(url,"master/pyproject.toml")
+
+    rsp = requests.get(url)
+    Api.check_response(rsp)
+    pyproject = toml.loads(rsp.content.decode())
+    version = pyproject["tool"]["poetry"]["version"]
+    logger.debug("Latest version from github: %s",version)
+    return version
+
