@@ -44,9 +44,9 @@ def queryset_fetch(
     """
     Fetch data for a queryset named NAME from ViEWS cloud and save it to OUT_FILE
     """
-    click.echo("Fetching queryset {name}...")
+    click.echo(f"Fetching queryset {name}...")
     operations.fetch(name,start_date,end_date).to_parquet(out_file)
-    click.echo("Saved to {out_file}")
+    click.echo(f"Saved to {out_file.name}")
 
 @queryset.command(name="list", short_help="show a list of available querysets")
 @click.option("--as-json/--as-table", default=False, help="output results as json")
