@@ -100,15 +100,14 @@ def queryset_upload(
     Upload a queryset defined in a JSON file. The name of the queryset can be
     overridden with the --name flag.
     """
+    qs = views_schema.Queryset(**json.load(queryset_file))
+
     if name is not None:
         click.echo(f"Renaming to {name}")
+        qs.name = name
 
-    if overwrite:
-        click.echo("Overwriting!")
-
-    qs = views_schema.Queryset(**json.load(queryset_file))
     try:
-        click.echo(operations.post_queryset(qs))
+        click.echo(operations.post_queryset(qs, overwrite = overwrite))
     except requests.HTTPError as httpe:
         click.echo(httpe.response.content)
 

@@ -50,14 +50,14 @@ def check_remotes(fn):
         return fn(*args,**kwargs)
     return inner
 
-def publish(queryset: views_schema.Queryset):
+def publish(queryset: views_schema.Queryset, overwrite: bool = True):
     """
     Publishes a queryset to the ViEWSER databases, which can then be fetched
     by calling `viewser.operations.fetch(queryset.name)`
     """
 
     try:
-        crud.post_queryset(remotes_api, queryset)
+        crud.post_queryset(remotes_api, queryset, overwrite = overwrite)
     except HTTPError as httpe:
         logger.info("Queryset named \"%s\" exists, updating",
                 queryset.name

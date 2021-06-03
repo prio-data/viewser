@@ -31,11 +31,16 @@ def fetch_queryset(
     check_parquet_response(response)
     return pd.read_parquet(BytesIO(response.content))
 
-def post_queryset(remotes_api: remotes.Api, queryset: views_schema.Queryset):
+def post_queryset(
+        remotes_api: remotes.Api,
+        queryset: views_schema.Queryset,
+        overwrite: bool = True):
     """
     Post a queryset to the remote API
     """
-    return remotes_api.http("POST",("queryset",),{},data=queryset.json()).json()
+    return remotes_api.http("POST",
+            ("queryset",), {"overwrite":overwrite},
+            data=queryset.json()).json()
 
 def put_queryset(remotes_api: remotes.Api, name:str,queryset: views_schema.Queryset):
     """
