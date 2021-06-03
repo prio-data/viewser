@@ -108,8 +108,8 @@ def queryset_upload(
 
     try:
         click.echo(operations.post_queryset(qs, overwrite = overwrite))
-    except requests.HTTPError as httpe:
-        click.echo(httpe.response.content)
+    except (remotes.RemoteError,requests.HTTPError) as err:
+        raise click.ClickException(str(err)) from err
 
 @viewser.group(name="config", short_help="configure viewser")
 def config():

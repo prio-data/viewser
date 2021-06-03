@@ -42,7 +42,6 @@ def check_remotes(fn):
     """
     Wrapper used for version checking when calling remote APIs
     """
-
     @wraps(fn)
     def inner(*args,**kwargs):
         check_latest_version()
@@ -55,23 +54,7 @@ def publish(queryset: views_schema.Queryset, overwrite: bool = True):
     Publishes a queryset to the ViEWSER databases, which can then be fetched
     by calling `viewser.operations.fetch(queryset.name)`
     """
-
-    try:
-        crud.post_queryset(remotes_api, queryset, overwrite = overwrite)
-    except HTTPError as httpe:
-        logger.info("Queryset named \"%s\" exists, updating",
-                queryset.name
-            )
-    else:
-        return
-
-    try:
-        crud.update_queryset(remotes_api, queryset)
-    except HTTPError as httpe:
-        logger.critical("Update returned %s: %s",
-                str(httpe.response.status_code),
-                str(httpe.response.content),
-            )
+    crud.post_queryset(remotes_api, queryset, overwrite = overwrite)
 
 def fetch(queryset_name:str, start_date: Optional[date] = None, end_date: Optional[date] = None):
     """
@@ -90,7 +73,6 @@ def fetch(queryset_name:str, start_date: Optional[date] = None, end_date: Option
 
 
 api_call = lambda fn: check_remotes(curry(fn, remotes_api))
-
 post_queryset = api_call(crud.post_queryset)
 put_queryset = api_call(crud.put_queryset)
 list_querysets = api_call(crud.list_querysets)

@@ -46,6 +46,7 @@ def put_queryset(remotes_api: remotes.Api, name:str,queryset: views_schema.Query
     """
     Put a queryset to the remote API, overwriting the existing queryset
     """
+    queryset.name = None
     return remotes_api.http("PUT",("queryset",name),{},data=queryset.json()).json()
 
 update_queryset = lambda remotes_api, queryset: put_queryset(remotes_api, queryset.name, queryset)

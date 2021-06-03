@@ -44,11 +44,14 @@ class Api:
             pass
         elif str(response.status_code)[0] == "5":
             raise RemoteError(
-                    f"{response.url} returned {response.status_code}: "
-                    f"{response.content.decode()}"
+                    f"HTTP {response.status_code}: Something went wrong on the server! "
+                    f"Call to {response.url} returned '{response.content.decode()}'"
                     )
         else:
-            raise requests.HTTPError(response=response)
+            raise requests.HTTPError(
+                    f"HTTP {response.status_code}! "
+                    f"Call to {response.url} returned '{response.content.decode()}'"
+                    )
 
     def http(self,method,path,parameters,*args,**kwargs):
         url = self.url(*path,**parameters)
