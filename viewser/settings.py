@@ -3,14 +3,35 @@ import os
 import functools
 import logging
 import json
+
+import requests
 import fitin
+import click
 
 from toolz.functoolz import compose,curry
 
+from . import exceptions
+
 logger = logging.getLogger(__name__)
 
+def try_to_reach(url):
+    try:
+        rsp = requests.get(url)
+        assert str(rsp.status_code)[0] == "2"
+    except (
+            requests.exceptions.MissingSchema,
+            requests.exceptions.ConnectionError,
+            requests.exceptions.ConnectTimeout,
+            AssertionError
+            ):
+        raise exceptions.ConfigurationError(
+                f"Could not reach url \"{url}\". Please enter a valid "
+                "remote url."
+            )
+    return url
+
 REQUIRED_SETTINGS = (
-            "REMOTE_URL",
+            ("REMOTE_URL", try_to_reach),
         )
 
 DEFAULT_SETTINGS = {
@@ -33,9 +54,6 @@ def log_decorator(msg,level = "debug"):
             return fn(*args,**kwargs)
         return inner
     return wrapper
-
-
-
 
 def load_config_from_file():
     with open(SETTINGS_FILE_PATH) as f:
@@ -121,8 +139,13 @@ except(AttributeError, KeyError):
     logging.basicConfig(level=logging.INFO)
 
 def configure_interactively():
-    for key in REQUIRED_SETTINGS:
+    for key,validate in REQUIRED_SETTINGS:
+        value = None
+        while not value:
+            try:
+                value = validate(input(f"{key} >> "))
+            except exceptions.ConfigurationError as cfge:
+                click.echo(str(cfge.message))
         config_set_in_file(
                 key,
-                input(f"{key} >> "),
             )

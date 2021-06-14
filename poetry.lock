@@ -577,7 +577,7 @@ socks = ["PySocks (>=1.5.6,!=1.5.7,<2.0)"]
 
 [[package]]
 name = "views-schema"
-version = "0.1.0"
+version = "0.2.0"
 description = "A package containing pydantic models used throughout ViEWS 3 for communication between services"
 category = "main"
 optional = false
@@ -597,7 +597,7 @@ python-versions = "*"
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.8"
-content-hash = "2552ef997092949891f2e7978fb7e5875ce4764b647a8e9c5ab382be9fe98cb7"
+content-hash = "a78e044c32bc4c55de579b249facb9842471a042232b61e11a2ebf0acfc963c5"
 
 [metadata.files]
 atomicwrites = [
@@ -926,8 +926,8 @@ urllib3 = [
     {file = "urllib3-1.26.3.tar.gz", hash = "sha256:de3eedaad74a2683334e282005cd8d7f22f4d55fa690a2a1020a416cb0a47e73"},
 ]
 views-schema = [
-    {file = "views_schema-0.1.0-py3-none-any.whl", hash = "sha256:4fbea64ba0410dc8c877be2c4cf79ab1b979fcfc36d60c294d4fc2a6dbf1bd44"},
-    {file = "views_schema-0.1.0.tar.gz", hash = "sha256:27f451200673efe246c5ac840ce611d9132afa8390bbe069119676b61af04a34"},
+    {file = "views_schema-0.2.0-py3-none-any.whl", hash = "sha256:7386f98651a4df137cf9f5e581eabd3e116e0c29cb6909f060d9edad48e605d9"},
+    {file = "views_schema-0.2.0.tar.gz", hash = "sha256:f4d00bcea2dcd8997234295ee5c36af6e7051d1ea91730e2623f7a07cd947403"},
 ]
 wcwidth = [
     {file = "wcwidth-0.2.5-py2.py3-none-any.whl", hash = "sha256:beb4802a9cebb9144e99086eff703a642a13d6a0052920003a230f3294bbe784"},
