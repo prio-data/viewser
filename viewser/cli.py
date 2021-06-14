@@ -9,7 +9,7 @@ import click
 import tabulate
 import requests
 import views_schema
-from . import settings, operations, remotes
+from . import settings, operations, remotes, exceptions
 
 logger = logging.getLogger(__name__)
 
@@ -19,10 +19,10 @@ def print_version(ctx, _, value):
     click.echo(version("viewser"))
     ctx.exit()
 
-
 @click.group()
 @click.option("--debug/--no-debug", default=False, help="Display debug logging messages")
-@click.option("--version", is_flag = True, callback = print_version, expose_value = False, is_eager= True)
+@click.option("--version",
+        is_flag = True, callback = print_version, expose_value = False, is_eager= True)
 def viewser(debug: bool):
     if debug:
         logging.getLogger().setLevel(logging.DEBUG)
@@ -36,6 +36,7 @@ def queryset():
 @click.argument("out-file", type=click.File("wb"))
 @click.option("-s","--start-date", type=click.DateTime())
 @click.option("-e","--end-date", type=click.DateTime())
+@exceptions.handle_http_exception()
 def queryset_fetch(
         name:str,
         out_file:io.BufferedWriter,
@@ -50,6 +51,7 @@ def queryset_fetch(
 
 @queryset.command(name="list", short_help="show a list of available querysets")
 @click.option("--as-json/--as-table", default=False, help="output results as json")
+@exceptions.handle_http_exception()
 def queryset_list(as_json: bool):
     """
     Show a list of available querysets.
@@ -63,6 +65,7 @@ def queryset_list(as_json: bool):
 
 @queryset.command(name="show", short_help="show details about a queryset")
 @click.argument("name", type=str)
+@exceptions.handle_http_exception()
 def queryset_show(name: str):
     """
     Show detailed information about a queryset
@@ -73,6 +76,7 @@ def queryset_show(name: str):
 @queryset.command(name="delete", short_help="delete a queryset")
 @click.confirmation_option(prompt="Delete queryset?")
 @click.argument("name", type=str)
+@exceptions.handle_http_exception()
 def queryset_delete(name: str):
     """
     Delete a queryset.
@@ -92,6 +96,7 @@ def queryset_delete(name: str):
 @click.argument("queryset_file", type=click.File("r","utf-8"))
 @click.option("-n", "--name", type=str)
 @click.option("--overwrite/--no-overwrite",default = False)
+@exceptions.handle_http_exception()
 def queryset_upload(
         queryset_file: io.BufferedReader,
         name: Optional[str],
@@ -195,4 +200,3 @@ def issue():
             "issue","new",
             body=f"My viewser version is {version('viewser')}"
         )
-

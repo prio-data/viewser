@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "viewser"
-version = "2.1.0"
+version = "2.2.0"
 description = ""
 authors = ["peder2911 <pglandsverk@gmail.com>"]
 
@@ -18,6 +18,7 @@ tabulate = "^0.8.9"
 toolz = "^0.11.1"
 views-schema = "^0.2.0"
 toml = "^0.10.2"
+colorama = "^0.4.4"
 
 [tool.poetry.scripts]
 viewser = "viewser.cli:viewser"
