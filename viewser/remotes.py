@@ -50,14 +50,14 @@ class Api:
     def http(self,method,path,parameters,*args,**kwargs):
         url = self.url(*path,**parameters)
         logger.debug("Requesting url %s",url)
-
         try:
             rsp = requests.request(method,url,*args,**kwargs)
-        except requests.exceptions.MissingSchema as mse:
-            if not url:
-                raise exceptions.ConfigurationError("No URL supplied") from mse
-            raise exceptions.ConfigurationError(f"URL {url} is invalid") from mse
-
+        except requests.exceptions.MissingSchema:
+            raise exceptions.ConfigurationError(
+                    f"Bad URL provided: \"{url}\"",
+                    hint = "Did you configure viewser correctly? "
+                        "Try running `viewser config list` to see your configuration"
+                )
         self.check_response(rsp)
         return rsp
 

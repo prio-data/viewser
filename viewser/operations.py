@@ -7,14 +7,22 @@ from typing import Optional
 import logging
 import time
 from functools import wraps
-from toolz.functoolz import curry, compose
-from requests import HTTPError
+from toolz.functoolz import curry
 import views_schema
-from . import settings,crud,remotes,checks
+from . import settings,crud,remotes,checks,exceptions
 
 logger = logging.getLogger(__name__)
 
 remotes_api = remotes.Api(settings.config_get("REMOTE_URL"),{})
+
+if not settings.config_get("REMOTE_URL"):
+    def raises(*args,**kwargs):
+        raise exceptions.ConfigurationError(
+                "Tried calling the API without setting the REMOTE_URL configuration setting.",
+                hint = "Did you configure viewser? Try running `viewser config interactive`."
+            )
+    remotes_api.http = raises
+
 
 get_latest_version = curry(remotes.latest_pyproject_version, settings.config_get("REPO_URL"))
 check_remote_version = curry(checks.check_remote_version, remotes_api)

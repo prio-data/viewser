@@ -1,3 +1,4 @@
+from typing import Optional
 import json
 import re
 import functools
@@ -39,37 +40,50 @@ class PrettyFormatter(click.HelpFormatter):
     def write_heading(self, msg):
         super().write_heading(msg)
 
-class ConfigurationError(Exception):
+class PrettyError(Exception):
+    error_name = "Error"
+
+    def pretty_format(self, message: str, hint: Optional[str] = None):
+        formatter = PrettyFormatter()
+        formatter.write_heading(self.error_name)
+        formatter.indent()
+        if message:
+            with formatter.section("Description"):
+                formatter.write_text(message)
+
+        if hint:
+            with formatter.section("Hint"):
+                formatter.write_text(colorama.Fore.GREEN + hint + colorama.Style.RESET_ALL)
+
+        return formatter.getvalue()
+
+
+class ConfigurationError(click.ClickException,PrettyError):
     """
     Raised when something is (assumed to be) misconfigured
     """
+    error_name = "Configuration error"
 
-class RemoteError(click.ClickException):
-    def __init__(self, response: requests.Response, hint: str = None):
-        formatter = PrettyFormatter()
-        formatter.write_heading(f"Remote error - {response.status_code}")
-        formatter.indent()
-        content = response.content.decode().strip()
+    def __init__(self,message: str, hint: Optional[str] = None):
+        super().__init__(self.pretty_format(message, hint))
 
+class RemoteError(click.ClickException, PrettyError):
+    """
+    Raised when something goes wrong with a request
+    """
+    error_name = "Remote error"
+
+    def __init__(self, response: requests.Response, hint: Optional[str] = None):
         defaults_filename = pkg_resources.resource_filename("viewser","data/status-codes.json")
         with open(defaults_filename) as f:
             defaults = json.load(f)[str(response.status_code)]
 
+        content = response.content.decode().strip()
         content = content if content else defaults["phrase"]
+        content = f"{response.url} returned {response.status_code}\n\n" + content
+
         hint = hint if hint else defaults["description"]
 
-        with formatter.section("Description"):
-            formatter.write_text(
-                    "Something went wrong while making a request to "
-                    f"{response.url}"
-                )
-
-        with formatter.section("Response content"):
-            formatter.write_text(content)
-
-        with formatter.section("Hint"):
-            formatter.write_text(hint)
-
-        self.message = formatter.getvalue()
-
-        super().__init__(self.message)
+        super().__init__(
+                self.pretty_format(content, hint)
+            )
