@@ -6,6 +6,8 @@ from urllib import parse
 import toml
 import requests
 
+from . import exceptions
+
 logger = logging.getLogger(__name__)
 
 class OperationPending(Exception):
@@ -56,7 +58,14 @@ class Api:
     def http(self,method,path,parameters,*args,**kwargs):
         url = self.url(*path,**parameters)
         logger.debug("Requesting url %s",url)
-        rsp = requests.request(method,url,*args,**kwargs)
+
+        try:
+            rsp = requests.request(method,url,*args,**kwargs)
+        except requests.exceptions.MissingSchema as mse:
+            if not url:
+                raise exceptions.ConfigurationError("No URL supplied") from mse
+            raise exceptions.ConfigurationError(f"URL {url} is invalid") from mse
+
         self.check_response(rsp)
         return rsp
 

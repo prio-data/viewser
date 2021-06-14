@@ -1,3 +1,4 @@
+from typing import Callable, List
 import os
 import functools
 import logging
@@ -15,7 +16,7 @@ REQUIRED_SETTINGS = (
 DEFAULT_SETTINGS = {
         "RETRY_FREQUENCY": 5, # seconds
         "RETRIES": 80,
-
+        "LOG_LEVEL": "INFO",
         "HANDSHAKE_PATH": "",
         "REPO_URL": "https://www.github.com/prio-data/viewser",
         "LATEST_KNOWN_VERSION": "0.0.0"
@@ -87,11 +88,32 @@ except FileNotFoundError:
     config_dict = {}
     save_config_to_file(config_dict)
 
-config_get = fitin.seek_config([
+def copy_to_config_file(fn):
+    def inner(key):
+        val = fn(key)
+        logger.warning(f"Writing default setting to config file: {key} - {val}")
+        config_set_in_file(key,val)
+        return val
+    return inner
+
+def seek_config(sources: List[Callable[[str],str]], default: Callable[[str],str])-> str:
+    def seeker(key):
+        for source in sources:
+
+            try:
+                return source(key)
+            except KeyError:
+                pass
+
+        logger.warning(f"Key {key} not set in config")
+        return default()
+    return seeker
+
+config_get = seek_config([
     fitin.environs_resolver(),
     fitin.dict_resolver(config_dict),
-    fitin.dict_resolver(DEFAULT_SETTINGS)
-    ])
+    copy_to_config_file(fitin.dict_resolver(DEFAULT_SETTINGS)),
+    ], str)
 
 try:
     logging.basicConfig(level=getattr(logging,config_get("LOG_LEVEL")))

@@ -16,7 +16,6 @@ logger = logging.getLogger(__name__)
 
 remotes_api = remotes.Api(settings.config_get("REMOTE_URL"),{})
 
-
 get_latest_version = curry(remotes.latest_pyproject_version, settings.config_get("REPO_URL"))
 check_remote_version = curry(checks.check_remote_version, remotes_api)
 
