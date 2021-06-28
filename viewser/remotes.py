@@ -1,4 +1,4 @@
-
+from typing import Dict, Optional
 import os
 import webbrowser
 import logging
@@ -6,7 +6,7 @@ from urllib import parse
 import toml
 import requests
 
-from . import exceptions
+from . import exceptions, schema
 
 logger = logging.getLogger(__name__)
 
@@ -25,8 +25,10 @@ def check_response(response):
         raise requests.HTTPError(response=response)
 
 class Api:
-    def __init__(self,url,paths=None):
-        self._base_url = url
+    def __init__(self,
+            base_url: str,
+            paths: Dict[str,schema.IRemotePaths]):
+        self._base_url = base_url
         self.paths = paths
 
     def url(self,*args,**kwargs):
@@ -47,7 +49,17 @@ class Api:
         else:
             raise requests.HTTPError(response = response)
 
-    def http(self,method,path,parameters,*args,**kwargs):
+    def remote(self,
+            base: schema.IRemotePaths,
+            path: str = "",
+            method = "GET",
+            parameters: Optional[Dict[str,str]] = {},
+            **kwargs):
+
+        path = os.path.join(self.paths[base],path)
+        return self._http(method, (path,), parameters, **kwargs)
+
+    def _http(self,method,path,parameters,*args,**kwargs):
         url = self.url(*path,**parameters)
         logger.debug("Requesting url %s",url)
         try:
@@ -62,7 +74,7 @@ class Api:
         return rsp
 
 def browser(base,*args,**kwargs):
-    webbrowser.open(Api(base).url(*args,**kwargs))
+    webbrowser.open(Api(base,{}).url(*args,**kwargs))
 
 def latest_pyproject_version(repo_url):
     """

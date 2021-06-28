@@ -1,11 +1,9 @@
 
-        
-import functools
 from importlib.metadata import version
 import re
 import json
 import logging
-from . import exceptions, remotes
+from . import exceptions, remotes, schema
 
 logger = logging.getLogger(__name__)
 
@@ -21,7 +19,7 @@ def check_remote_version(remotes_api: remotes.Api):
     "viewser_version" field.
     """
     logger.debug("Checking remote version")
-    rsp = remotes_api.http("GET", ("",), {})
+    rsp = remotes_api.remote(schema.IRemotePaths.querysets)
     if rsp.status_code != 200:
         raise exceptions.ConfigurationError(
                 f"The handshake endpoint returned {rsp.status_code}. "
@@ -34,7 +32,6 @@ def check_remote_version(remotes_api: remotes.Api):
                 "The handshake endpoint did not return the right data. "
                 f"Is the handshake URL correct? {remotes_api.url('')}"
                 ) from e
-
     try:
         assert re.search(r"[0-9]+\.[0-9]+\.[0-9]+",remote_version)
     except AssertionError as ae:
@@ -44,7 +41,7 @@ def check_remote_version(remotes_api: remotes.Api):
 
     major_version = lambda x: x.split(".")[0]
 
-    logger.debug(f"%s vs %s",remote_version, version("viewser"))
+    logger.debug("%s vs %s",remote_version, version("viewser"))
     if not major_version(remote_version) == major_version(version("viewser")):
         raise WrongVersion(
                 "Viewser installation has wrong major version. "

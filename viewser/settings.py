@@ -1,4 +1,5 @@
 from typing import Callable, List
+from enum import Enum
 import os
 import functools
 import logging
@@ -10,7 +11,7 @@ import click
 
 from toolz.functoolz import compose,curry
 
-from . import exceptions
+from . import exceptions, schema
 
 logger = logging.getLogger(__name__)
 
@@ -149,3 +150,8 @@ def configure_interactively():
         config_set_in_file(
                 key,
             )
+
+REMOTE_PATHS = {
+        schema.IRemotePaths.querysets: "querysets",
+        schema.IRemotePaths.documentation: "docs",
+    }

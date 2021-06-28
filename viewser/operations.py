@@ -13,7 +13,7 @@ from . import settings,crud,remotes,checks,exceptions
 
 logger = logging.getLogger(__name__)
 
-remotes_api = remotes.Api(settings.config_get("REMOTE_URL"),{})
+remotes_api = remotes.Api(settings.config_get("REMOTE_URL"), settings.REMOTE_PATHS)
 
 if not settings.config_get("REMOTE_URL"):
     def raises(*args,**kwargs):

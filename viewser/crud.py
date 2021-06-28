@@ -3,7 +3,7 @@ import logging
 from io import BytesIO
 import pandas as pd
 import views_schema
-from . import remotes
+from . import remotes, schema
 
 logger = logging.getLogger(__name__)
 
@@ -22,10 +22,10 @@ def fetch_queryset(
         start_date:Optional[str]=None,
         end_date:Optional[str]=None):
 
-    response = remotes_api.http(
-            "GET",
-            ("data",name),
-            {"start_date":start_date,"end_date": end_date}
+    response = remotes_api.remote(
+            schema.IRemotePaths.querysets,
+            path = "data/"+name,
+            parameters = {"start_date":start_date,"end_date": end_date}
             )
 
     check_parquet_response(response)
@@ -38,8 +38,11 @@ def post_queryset(
     """
     Post a queryset to the remote API
     """
-    return remotes_api.http("POST",
-            ("queryset",), {"overwrite":overwrite},
+    return remotes_api.remote(
+            schema.IRemotePaths.querysets,
+            "querysets",
+            method = "POST",
+            parameters={"overwrite":overwrite},
             data=queryset.json()).json()
 
 def put_queryset(remotes_api: remotes.Api, name:str,queryset: views_schema.Queryset):
@@ -47,7 +50,12 @@ def put_queryset(remotes_api: remotes.Api, name:str,queryset: views_schema.Query
     Put a queryset to the remote API, overwriting the existing queryset
     """
     queryset.name = None
-    return remotes_api.http("PUT",("queryset",name),{},data=queryset.json()).json()
+    return remotes_api.remote(
+            schema.IRemotePaths.querysets,
+            "querysets/" + name,
+            method = "PUT",
+            data=queryset.json()
+            ).json()
 
 update_queryset = lambda remotes_api, queryset: put_queryset(remotes_api, queryset.name, queryset)
 
@@ -55,16 +63,21 @@ def list_querysets(remotes_api: remotes.Api):
     """
     List available querysets
     """
-    return remotes_api.http("GET",("queryset",),{}).json()
+    return remotes_api.remote(schema.IRemotePaths.querysets,"querysets").json()
 
 def delete_queryset(remotes_api: remotes.Api, name):
     """
     Delete a named queryset
     """
-    return remotes_api.http("DELETE",("queryset",name),{})
+    return remotes_api.remote(
+            schema.IRemotePaths.querysets,
+            "querysets/"+name,
+            method = "DELETE")
 
 def show_queryset(remotes_api: remotes.Api, name:str):
     """
     Show details about a queryset
     """
-    return remotes_api.http("GET",("queryset",name),{}).json()
+    return remotes_api.remote(
+            schema.IRemotePaths.querysets,
+            "querysets/"+name).json()
