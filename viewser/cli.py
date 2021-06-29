@@ -9,7 +9,7 @@ import click
 import tabulate
 import requests
 import views_schema
-from . import settings, operations, remotes, exceptions
+from . import settings, operations, remotes, exceptions, crud, formatting
 
 logger = logging.getLogger(__name__)
 
@@ -65,6 +65,7 @@ def queryset_list(as_json: bool):
 
 @queryset.command(name="show", short_help="show details about a queryset")
 @click.argument("name", type=str)
+
 @exceptions.handle_http_exception()
 def queryset_show(name: str):
     """
@@ -200,3 +201,52 @@ def issue():
             "issue","new",
             body=f"My viewser version is {version('viewser')}"
         )
+
+@viewser.group(name="tables")
+@click.pass_context
+def tables(ctx: click.Context):
+    ctx.obj = crud.DocumentationCrudOperations(settings.config_get("REMOTE_URL"), "tables")
+
+@tables.command(name="list")
+@click.pass_obj
+def list_tables(ops: crud.DocumentationCrudOperations):
+    formatter = formatting.DocumentationFormatter(ops.list(), data_name = "Tables")
+    click.echo(formatter.formatted())
+
+@tables.command(name="show")
+@click.argument("table-name")
+@click.argument("column-name", required=False)
+@click.pass_obj
+def show_tables(
+        ops: crud.DocumentationCrudOperations,
+        table_name: str,
+        column_name: Optional[str] = None):
+    path = table_name
+    if column_name:
+        path += "/"+column_name
+
+    formatter = formatting.DocumentationFormatter(ops.show(path), data_name = "Columns")
+    if column_name:
+        formatter.set_data_name("Properties")
+
+    click.echo(formatter.formatted())
+
+@viewser.group(name="transforms")
+@click.pass_context
+def transforms(ctx: click.Context):
+    ctx.obj = crud.DocumentationCrudOperations(settings.config_get("REMOTE_URL"), "transforms")
+
+@transforms.command(name="list")
+@click.pass_obj
+def list_transforms(ops: crud.DocumentationCrudOperations):
+    formatter = formatting.DocumentationFormatter(ops.list(), "Transforms")
+    click.echo(formatter.formatted())
+
+@transforms.command(name="show")
+@click.argument("transform-name", type=str)
+@click.pass_obj
+def show_transform(
+        ops: crud.DocumentationCrudOperations,
+        transform_name: str):
+    formatter = formatting.DocumentationFormatter(ops.show(transform_name),"Properties")
+    click.echo(formatter.formatted())
