@@ -1,120 +1,188 @@
 import re
-import functools
+import textwrap
 from contextlib import contextmanager
-from typing import Dict, List, Any, Optional
+from typing import Dict, List, Any, Optional, Callable, Tuple
+from toolz.functoolz import reduce, partial, curry
 from click import HelpFormatter
 import tabulate
 import colorama
 from views_schema import ViewsDoc
 
+MAX_CONTENT_WIDTH = 48
+
+wrapped_lines = curry(textwrap.wrap,width=MAX_CONTENT_WIDTH)
+
 def str_str_dict(any_dict: Dict[Any,Any])-> Dict[str,str]:
     return {k:v for k,v in any_dict.items() if isinstance(k,str) and isinstance(v,str)}
 
-def has_page(default=None):
-    def wrapper(fn):
-        def inner(self, *args,**kwargs):
-            if self._views_doc.page is not None:
-                return fn(self,*args,**kwargs)
-            else:
-                return default
-        return inner
-    return wrapper
+def add_line(a:str,b:str)->str:
+    return a + "\n" + b
+
+def bold(str)->str:
+    return colorama.Style.BRIGHT + str + colorama.Style.RESET_ALL
+
+lines = partial(reduce,add_line)
+
+def help_string(string: str)->Callable[["WrappedViewsDoc"],str]:
+    turn_off_message = (
+            "Run viewser config unset VERBOSE to "
+            "turn off these help messages."
+        )
+
+    def inner(doc: "WrappedViewsDoc")->str:
+        return lines((
+                f"Help for {doc.name}:",
+                " ",
+                *wrapped_lines(string),
+                " ",
+                *wrapped_lines(turn_off_message),
+            ))
+    return inner
+
+
+def title(doc: "WrappedViewsDoc")->str:
+    return lines((
+            "> "+bold(doc.heading),
+            " ",
+        ))
+
+def description(doc: "WrappedViewsDoc")->Optional[str]:
+    if doc.has_page:
+        return lines((
+                *wrapped_lines(doc.description),
+                " ",
+                doc.author + "@" + doc.date_updated,
+                " ",
+            ))
+    else:
+        return None
+
+def function_sig(doc: "WrappedViewsDoc")->str:
+    try:
+        signature = doc.data["arguments"]
+
+        arguments = ["- " + a["name"] + " (" + a["type"] + ")" for a in signature][1:]
+        if arguments:
+            sig_description = f"{doc.heading} takes {len(arguments)} argument(s):"
+            signature_lines = [sig_description] + arguments
+        else:
+            signature_lines = [f"{doc.heading} takes no arguments"]
+
+        if doc.data["level_of_analysis"] == "any":
+            type_note = "This transform can be applied to any kind of data."
+        else:
+            type_note = (
+                    "This transform can only be applied to "
+                    f"data of type {doc.data['level_of_analysis']}"
+                )
+
+        docstring = doc.data["docstring"] if doc.data["docstring"] is not None else "..."
+
+        return lines((
+            "Docstring:",
+            *wrapped_lines("\""+docstring+"\""),
+            " ",
+            *signature_lines,
+            " ",
+            *wrapped_lines(type_note)
+        ))
+    except KeyError:
+        return None
+
+def entry_table(doc: "WrappedViewsDoc")->str:
+    data = []
+    for entry in doc.sub_entries:
+        row = str_str_dict(entry.dict())
+        row.update(str_str_dict(entry.data))
+        data.append(row)
+    return tabulate.tabulate(data, headers="keys") + "\n"
+
+class WrappedViewsDoc:
+    def __init__(self, doc: ViewsDoc):
+        self.doc = doc
+
+    @property
+    def name(self):
+        return self.doc.entry.name
+
+    @property
+    def heading(self):
+        return self.name.capitalize()
+
+    @property
+    def has_page(self):
+        return self.doc.page is not None
+
+    @property
+    def description(self):
+        return self.doc.page.content if self.has_page else "No description added"
+
+    @property
+    def author(self):
+        return self.doc.page.author if self.has_page else None
+
+    @property
+    def date_updated(self):
+        return str(self.doc.page.last_edited.date()) if self.has_page else None
+
+    @property
+    def sub_entries(self):
+        return self.doc.entry.entries
+
+    @property
+    def data(self):
+        return self.doc.entry.data
+
+    def json(self):
+        return self.doc.json()
+
+NamedFormatting = Tuple[str, Callable[["WrappedViewsDoc"], str]]
 
 class DocumentationFormatter(HelpFormatter):
     _max_data_len = 150
     _divider_length = 32
     _divider_char = "-"
+    SEPARATOR = "{{SEP}}"
 
-    def __init__(self, views_doc: ViewsDoc, data_name: str = "Data"):
+    def __init__(self):
         colorama.init()
-        self._views_doc: ViewsDoc = views_doc
-        self._data_name = data_name
         super().__init__()
 
-    def set_data_name(self,name):
-        self._data_name = name
+    def indented(self, str) -> str:
+        return "\n".join([(" "*self.current_indent)+ ln for ln in str.split("\n")])
 
-    @property
-    def data(self):
-        if self._views_doc.entry.entries:
-            entries: List[Dict[str,str]] = []
-            for e in self._views_doc.entry.entries:
-                table_entry = str_str_dict(e.dict())
-                table_entry.update(str_str_dict(e.data))
-                entries.append(table_entry)
-            entries = [{k:v for k,v in e.items() if len(v) < self._max_data_len} for e in entries]
-            entries = [{k.capitalize():v for k,v in e.items()} for e in entries]
-        else:
-            data = str_str_dict(self._views_doc.entry.data)
-            entries = [{"key":k,"value":v} for k,v in data.items()]
-        return entries
+    def divider(self) -> str:
+        return self.indented(self.SEPARATOR)
 
-    @property
-    def heading(self):
-        return self._views_doc.entry.name.capitalize()
-
-    @property
-    @has_page("No description added")
-    def description(self):
-        return self._views_doc.page.content
-
-    @property
-    @has_page("")
-    def author(self):
-        return self._views_doc.page.author
-
-    @property
-    @has_page("")
-    def date_updated(self):
-        return self._views_doc.page.last_edited.date()
-
-    def table(self):
-        table_string = tabulate.tabulate(self.data, headers="keys")
-        lines = table_string.split("\n")
-        lines = [(" "*self.current_indent) + l for l in lines]
-        table_string = "\n".join(lines)
-        self.write(table_string)
-
-    def _divider(self):
-        self.write_indented("{{SEP}}\n")
-
-    def empty_line(self):
+    def formatted(self, doc: ViewsDoc, formatters: List[Optional[NamedFormatting]]):
+        doc = WrappedViewsDoc(doc)
         self.write("\n")
-
-    def formatted(self):
-        self.empty_line()
         self.indent()
-        self.write_heading(self.heading)
-        try:
-            with self.section():
-                self.write_text(self.description)
-                self._divider()
-                self.write_text(f"{self.author} @ {self.date_updated}")
-        except AttributeError as ae:
-            pass
 
-        with self.section(self._data_name):
-            self.table()
+        formatters = (fmt for fmt in formatters if fmt is not None)
+
+        for name, formatter in formatters:
+            output = formatter(doc)
+            if output:
+                with self.section(name):
+                    self.write(self.indented(output))
 
         rendered = self.getvalue()
-        longest_line = max([len(l) for l in rendered.split("\n")])
-        return re.sub("{{SEP}}","-"*longest_line,rendered)
 
-    def write_indented(self, str):
-        self.write((" "*self.current_indent)+str)
+        longest_line = max([len(l) for l in rendered.split("\n")])
+        return re.sub(self.SEPARATOR,"-"*longest_line,rendered)
 
     def write_heading(self, heading: str):
-        self.write_indented(
+        self.write(self.indented(
                 colorama.Style.BRIGHT + heading.capitalize() + colorama.Style.RESET_ALL + "\n"
-            )
-        self.empty_line()
+            ))
+        self.write("\n")
 
     @contextmanager
     def section(self, name: Optional[str] = None):
         if name:
-            self.write_heading(name)
+            self.write(self.indented(">> "+ name)+"\n\n")
         try:
             yield
         finally:
-            self.empty_line()
-
+            self.write("\n"+self.indented(self.SEPARATOR)+"\n")

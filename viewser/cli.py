@@ -9,7 +9,7 @@ import click
 import tabulate
 import requests
 import views_schema
-from . import settings, operations, remotes, exceptions, crud, formatting
+from . import settings, operations, remotes, exceptions, crud, formatting, context_objects
 
 logger = logging.getLogger(__name__)
 
@@ -133,13 +133,12 @@ def config_interactive():
 
 @config.command(name="set", short_help="set a configuration value")
 @click.argument("name", type=str)
-@click.argument("value", type=str)
+@click.argument("value", type=str, default=1)
 @click.option("--override/--no-override",default=True)
 def config_set(name: str, value: str, override: bool): # pylint: disable=redefined-builtin
     """
     Set a configuration value.
     """
-
     overrides = True
     try:
         settings.config_get(name)
@@ -177,6 +176,17 @@ def config_list():
     """
     click.echo(tabulate.tabulate(settings.config_dict.items()))
 
+@config.command(name="unset", short_help="unset a configuration value")
+@click.confirmation_option(prompt="Unset config key?")
+@click.argument("name", type=str)
+def config_unset(name: str):
+    """
+    Unset a configuration value, removing its entry from the config file.
+    """
+    current_value = settings.config_get(name)
+    settings.config_unset_in_file(name)
+    click.echo(f"Unset {name} (was {current_value})")
+
 @viewser.group(name="help", short_help="commands for finding documentation")
 def get_help():
     """
@@ -205,48 +215,117 @@ def issue():
 @viewser.group(name="tables")
 @click.pass_context
 def tables(ctx: click.Context):
-    ctx.obj = crud.DocumentationCrudOperations(settings.config_get("REMOTE_URL"), "tables")
+    """
+    Commands used to inspect available tables and columns.
+    """
+    ctx.obj = context_objects.DocumentationContext(
+                crud.DocumentationCrudOperations(settings.config_get("REMOTE_URL"), "tables"),
+                formatting.DocumentationFormatter()
+            )
 
-@tables.command(name="list")
+@tables.command(name="list", short_help="show available tables")
 @click.pass_obj
-def list_tables(ops: crud.DocumentationCrudOperations):
-    formatter = formatting.DocumentationFormatter(ops.list(), data_name = "Tables")
-    click.echo(formatter.formatted())
+def list_tables(ctx_obj: context_objects.DocumentationContext):
+    """
+    Show all available tables.
+    """
+    help = (
+            "Run viewser tables show {table} to see "
+            "what columns are in a table. To see "
+            "more information about a column, run "
+            "viewser tables show {table} {column}."
+        )
 
-@tables.command(name="show")
+    click.echo(
+        ctx_obj.format(
+            ctx_obj.operations.list(),
+            (
+                ("", formatting.title),
+                ("", formatting.entry_table),
+                ("", formatting.help_string(help)) if settings.is_config("VERBOSE") else None,
+            )
+        )
+    )
+
+@tables.command(name="show", short_help="inspect table or column")
 @click.argument("table-name")
 @click.argument("column-name", required=False)
 @click.pass_obj
 def show_tables(
-        ops: crud.DocumentationCrudOperations,
+        ctx_obj: context_objects.DocumentationContext,
         table_name: str,
         column_name: Optional[str] = None):
+    """
+    Show either a table or a column, depending on whether one argument is
+    passed (table name), or two arguments are passed (table name - column
+    name).
+    """
     path = table_name
     if column_name:
         path += "/"+column_name
-
-    formatter = formatting.DocumentationFormatter(ops.show(path), data_name = "Columns")
-    if column_name:
-        formatter.set_data_name("Properties")
-
-    click.echo(formatter.formatted())
+    click.echo(
+        ctx_obj.format(
+            ctx_obj.operations.show(path),
+            (
+                ("", formatting.title),
+                ("Description", formatting.description),
+                ("Columns", formatting.entry_table) if column_name is None else None
+            )
+        )
+    )
 
 @viewser.group(name="transforms")
 @click.pass_context
 def transforms(ctx: click.Context):
-    ctx.obj = crud.DocumentationCrudOperations(settings.config_get("REMOTE_URL"), "transforms")
+    """
+    Commands used to inspect available transforms.
+    """
+    ctx.obj = context_objects.DocumentationContext(
+                crud.DocumentationCrudOperations(settings.config_get("REMOTE_URL"), "transforms"),
+                formatting.DocumentationFormatter()
+            )
 
-@transforms.command(name="list")
+@transforms.command(name="list", short_help="show all available transforms")
 @click.pass_obj
-def list_transforms(ops: crud.DocumentationCrudOperations):
-    formatter = formatting.DocumentationFormatter(ops.list(), "Transforms")
-    click.echo(formatter.formatted())
+def list_transforms(ctx_obj: crud.DocumentationCrudOperations):
+    """
+    List all available transforms.
+    """
+    help = (
+            "Run viewser transforms show {path} "
+            "to see details about a transform, "
+            "such as its list of arguments and "
+            "docstring."
+        )
 
-@transforms.command(name="show")
+    click.echo(
+        ctx_obj.format(
+            ctx_obj.operations.list(),
+            (
+                ("", formatting.title),
+                ("", formatting.entry_table),
+                ("", formatting.help_string(help)) if settings.is_config("VERBOSE") else None,
+            )
+        )
+    )
+
+@transforms.command(name="show",short_help="show details about a transform")
 @click.argument("transform-name", type=str)
 @click.pass_obj
 def show_transform(
-        ops: crud.DocumentationCrudOperations,
+        ctx_obj: context_objects.DocumentationContext,
         transform_name: str):
-    formatter = formatting.DocumentationFormatter(ops.show(transform_name),"Properties")
-    click.echo(formatter.formatted())
+    """
+    Show details about a transform, such as which arguments it takes, and
+    which level of analysis it is applicable to.
+    """
+    click.echo(
+        ctx_obj.format(
+            ctx_obj.operations.show(transform_name),
+            (
+                ("", formatting.title),
+                ("Description", formatting.description),
+                ("", formatting.function_sig),
+            )
+        )
+    )
