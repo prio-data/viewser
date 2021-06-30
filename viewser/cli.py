@@ -278,12 +278,14 @@ def show_tables(
 @click.argument("content-file", type=click.File("r"))
 @click.argument("table-name")
 @click.argument("column-name", required=False)
+@click.option("--overwrite", is_flag = True, help="overwrite existing documentation")
 @click.pass_obj
 def annotate_table(
         ctx_obj: context_objects.DocumentationContext,
         content_file: io.BufferedReader,
         table_name: str,
-        column_name: str):
+        column_name: str,
+        overwrite: bool):
     """
     Annotate a table or a column. To annotate a table, pass a single argument
     following the file containing the annotation. To annotate a column, pass
@@ -294,7 +296,7 @@ def annotate_table(
         path += "/"+column_name
 
     to_post = views_schema.PostedDocumentationPage(content = content_file.read())
-    posted = ctx_obj.operations.post(to_post, path)
+    posted = ctx_obj.operations.post(to_post, path, overwrite = overwrite)
     click.echo(ctx_obj.format(
             posted,
             (
@@ -363,18 +365,20 @@ def show_transform(
 @transforms.command(name="annotate", short_help="add documentation text")
 @click.argument("content-file", type=click.File("r"))
 @click.argument("transform-name")
+@click.option("--overwrite", is_flag = True, help="overwrite existing documentation")
 @click.pass_obj
 def annotate_transform(
         ctx_obj: context_objects.DocumentationContext,
         content_file: io.BufferedReader,
-        transform_name: str):
+        transform_name: str,
+        overwrite: bool = False):
     """
     Annotate a table or a column. To annotate a table, pass a single argument
     following the file containing the annotation. To annotate a column, pass
     two arguments.
     """
     to_post = views_schema.PostedDocumentationPage(content = content_file.read())
-    posted = ctx_obj.operations.post(to_post, transform_name)
+    posted = ctx_obj.operations.post(to_post, transform_name, overwrite=overwrite)
     click.echo(ctx_obj.format(
             posted,
             (

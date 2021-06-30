@@ -57,6 +57,17 @@ class PrettyError(Exception):
 
         return formatter.getvalue()
 
+class ExistsError(click.ClickException,PrettyError):
+    """
+    Raised when something is in conflict with remote,
+    and an override has not been passed (--override).
+    """
+    error_name = "Already exists!"
+    def __init__(self):
+        super().__init__(self.pretty_format(
+            "This resource already exists!",
+            "Try passing --overwrite if you want to overwrite this resource"
+            ))
 
 class ConfigurationError(click.ClickException,PrettyError):
     """
@@ -74,6 +85,8 @@ class RemoteError(click.ClickException, PrettyError):
     error_name = "Remote error"
 
     def __init__(self, response: requests.Response, hint: Optional[str] = None):
+        self.response = response
+
         defaults_filename = pkg_resources.resource_filename("viewser","data/status-codes.json")
         with open(defaults_filename) as f:
             defaults = json.load(f)[str(response.status_code)]

@@ -54,13 +54,33 @@ class CrudOperations(ABC, Generic[PostedModel, ListedModel, DetailModel]):
             raise exceptions.RemoteError(response = response) from ae
         return response
 
-    def post(self, posted: PostedModel, name: str = None)-> DetailModel:
+    def _check_post_exists(self,name: str)-> bool:
+        try:
+            self.show(name)
+        except exceptions.RemoteError as re:
+            if re.response.status_code == 404:
+                return False
+            else:
+                raise re
+        else:
+            return True
+
+    def post(self, posted: PostedModel, name: str = None, overwrite: bool = False)-> DetailModel:
+
         if name is None:
             name = posted.name
+
+        if not overwrite:
+            try:
+                assert not self._check_post_exists(name)
+            except AssertionError:
+                raise exceptions.ExistsError
+
         self._http("POST", self._url(name),
                 data = posted.json(),
                 headers = {"Content-Type":"application/json"}
                 )
+
         now_exists = self._http("GET", self._url(name))
         return self.__detail_model__(**now_exists.json())
 
@@ -111,6 +131,13 @@ class DocumentationCrudOperations(CrudOperations[
 
     __posted_model__ = views_schema.PostedDocumentationPage
     __detail_model__ = views_schema.ViewsDoc
+
+    def _check_post_exists(self,name: str)->bool:
+        doc_page = self.show(name)
+        if doc_page.page is None:
+            return False
+        else:
+            return True
 
     def list(self) -> views_schema.ViewsDoc:
         return self.show("")
