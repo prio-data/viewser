@@ -54,9 +54,14 @@ class CrudOperations(ABC, Generic[PostedModel, ListedModel, DetailModel]):
             raise exceptions.RemoteError(response = response) from ae
         return response
 
-    def post(self, posted: PostedModel)-> DetailModel:
-        self._http("POST", self._url(), data = posted.json())
-        now_exists = self._http("GET", self._url(posted.name))
+    def post(self, posted: PostedModel, name: str = None)-> DetailModel:
+        if name is None:
+            name = posted.name
+        self._http("POST", self._url(name),
+                data = posted.json(),
+                headers = {"Content-Type":"application/json"}
+                )
+        now_exists = self._http("GET", self._url(name))
         return self.__detail_model__(**now_exists.json())
 
     def list(self) -> List[ListedModel]:

@@ -274,6 +274,36 @@ def show_tables(
         )
     )
 
+@tables.command(name="annotate", short_help="add documentation text")
+@click.argument("content-file", type=click.File("r"))
+@click.argument("table-name")
+@click.argument("column-name", required=False)
+@click.pass_obj
+def annotate_table(
+        ctx_obj: context_objects.DocumentationContext,
+        content_file: io.BufferedReader,
+        table_name: str,
+        column_name: str):
+    """
+    Annotate a table or a column. To annotate a table, pass a single argument
+    following the file containing the annotation. To annotate a column, pass
+    two arguments.
+    """
+    path = table_name
+    if column_name:
+        path += "/"+column_name
+
+    to_post = views_schema.PostedDocumentationPage(content = content_file.read())
+    posted = ctx_obj.operations.post(to_post, path)
+    click.echo(ctx_obj.format(
+            posted,
+            (
+                ("", formatting.title),
+                ("Description", formatting.description)
+            )
+        )
+    )
+
 @viewser.group(name="transforms")
 @click.pass_context
 def transforms(ctx: click.Context):
@@ -326,6 +356,30 @@ def show_transform(
                 ("", formatting.title),
                 ("Description", formatting.description),
                 ("", formatting.function_sig),
+            )
+        )
+    )
+
+@transforms.command(name="annotate", short_help="add documentation text")
+@click.argument("content-file", type=click.File("r"))
+@click.argument("transform-name")
+@click.pass_obj
+def annotate_transform(
+        ctx_obj: context_objects.DocumentationContext,
+        content_file: io.BufferedReader,
+        transform_name: str):
+    """
+    Annotate a table or a column. To annotate a table, pass a single argument
+    following the file containing the annotation. To annotate a column, pass
+    two arguments.
+    """
+    to_post = views_schema.PostedDocumentationPage(content = content_file.read())
+    posted = ctx_obj.operations.post(to_post, transform_name)
+    click.echo(ctx_obj.format(
+            posted,
+            (
+                ("", formatting.title),
+                ("Description", formatting.description)
             )
         )
     )
