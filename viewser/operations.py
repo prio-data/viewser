@@ -1,17 +1,18 @@
 """
 High-level operations intended for users
 """
+from functools import wraps
 from importlib.metadata import version
 from datetime import date
 from typing import Optional
 import logging
 import time
-from functools import wraps
 from toolz.functoolz import curry
 import views_schema
-from . import settings,crud,remotes,checks,exceptions
+from . import settings,crud,remotes,checks,exceptions,formatting
 
 logger = logging.getLogger(__name__)
+
 
 remotes_api = remotes.Api(settings.config_get("REMOTE_URL"), settings.REMOTE_PATHS)
 

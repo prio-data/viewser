@@ -1,3 +1,4 @@
+from environs import ParseResult
 from typing import Callable, List
 from enum import Enum
 import os
@@ -68,11 +69,30 @@ def with_key_value(key,value,cfg):
     cfg[key] = value
     return cfg
 
+def remove_key(key,cfg):
+    try:
+        del cfg[key]
+    except KeyError:
+        logger.warning(f"Could not unset {key}, not set")
+    return cfg
+
+config_unset = lambda load,save,key: compose(
+            save,
+            curry(remove_key,key),
+            load,
+        )()
+
 config_set = lambda load,save,key,value: compose(
         save,
         curry(with_key_value,key,value),
         load,
         )()
+
+config_unset_in_file = curry(
+        config_unset,
+        load_config_from_file,
+        log_decorator("Altering config file")(save_config_to_file)
+        )
 
 config_set_in_file = curry(
         config_set,
@@ -123,8 +143,6 @@ def seek_config(sources: List[Callable[[str],str]], default: Callable[[str],str]
                 return source(key)
             except KeyError:
                 pass
-
-        logger.warning(f"Key {key} not set in config")
         return default()
     return seeker
 
@@ -133,6 +151,14 @@ config_get = seek_config([
     fitin.dict_resolver(config_dict),
     copy_to_config_file(fitin.dict_resolver(DEFAULT_SETTINGS)),
     ], str)
+
+def is_config(key):
+    try:
+        value = config_get(key)
+        assert value
+        return True
+    except (KeyError,AssertionError):
+        return False
 
 try:
     logging.basicConfig(level=getattr(logging,config_get("LOG_LEVEL")))
