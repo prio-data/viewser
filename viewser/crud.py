@@ -178,7 +178,8 @@ def post_queryset(
             "querysets",
             method = "POST",
             parameters={"overwrite":overwrite},
-            data=queryset.json()).json()
+            data=queryset.json(),
+            headers={"Content-Type":"application/json"}).json()
 
 def put_queryset(remotes_api: remotes.Api, name:str,queryset: views_schema.Queryset):
     """
