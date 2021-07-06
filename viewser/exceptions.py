@@ -38,7 +38,7 @@ class RequestError(Exception):
         self.url = response.url
         self.status_code = response.status_code
         self.content = response.content.decode()
-        super().__init__(f"{self.url} returned {self.status_code} ({self.content})")
+        super().__init__(f"\n{self.url} returned {self.status_code} \n\t({self.content})")
 
 class OperationPending(RequestError):
     def __init__(self, response: requests.Response):
