@@ -1,4 +1,3 @@
-from collections import namedtuple
 from typing import Dict, Optional, Any, List, Callable
 import json
 import os
@@ -100,7 +99,7 @@ def check_pending(response: Response) -> ExceptionOrResponse:
     logger.debug(f"Checking if {response.url} is pending")
     return response_check(
             lambda rsp: rsp.status_code != 202,
-            OperationPending,
+            exceptions.OperationPending,
             response
         )
 
