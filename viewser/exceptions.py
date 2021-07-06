@@ -57,6 +57,11 @@ class PrettyError(Exception):
 
         return formatter.getvalue()
 
+class ViewsError(PrettyError):
+    error_name = "ViEWS error"
+    def __init__(self, message: str, hint: Optional[str] = None):
+        super().__init__(self.pretty_format(message,hint))
+
 class ExistsError(click.ClickException,PrettyError):
     """
     Raised when something is in conflict with remote,
