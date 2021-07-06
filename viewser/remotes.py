@@ -25,27 +25,6 @@ def pydantic_validate(val, type):
         x: type
     return mdl(x=val).x
 
-class RequestError(Exception):
-    mock_response = namedtuple("mock_response", ("url","status_code", "content"))
-    def __init__(self, response):
-        self.url = response.url
-        self.status_code = response.status_code
-        self.content = response.content.decode()
-        super().__init__(f"{self.url} returned {self.status_code} ({self.content})")
-
-class OperationPending(RequestError):
-    def __init__(self, response: Response):
-        super().__init__(self.mock_response(response.url, response.status_code, b"Pending..."))
-
-class RemoteError(RequestError):
-    pass
-
-class ClientError(RequestError):
-    pass
-
-class NotFoundError(RequestError):
-    pass
-
 def make_request(
         url: str,
         method: str = "GET",
@@ -121,7 +100,7 @@ def check_pending(response: Response) -> ExceptionOrResponse:
     logger.debug(f"Checking if {response.url} is pending")
     return response_check(
             lambda rsp: rsp.status_code != 202,
-            lambda rsp: OperationPending(rsp),
+            OperationPending,
             response
         )
 
@@ -134,7 +113,7 @@ def check_error(response: Response) -> ExceptionOrResponse:
     """
     logger.debug(f"Checking if {response.url} resulted in an error")
     return response_check(
-            lambda rsp: str(rsp.status_code)[0] != "5", RemoteError,
+            lambda rsp: str(rsp.status_code)[0] != "5", exceptions.RemoteError,
             response
         )
 
@@ -171,7 +150,7 @@ def check_404(response: Response) -> ExceptionOrResponse:
     """
     return response_check(
             lambda rsp: rsp.status_code != 404,
-            NotFoundError,
+            exceptions.NotFoundError,
             response,
             )
 
@@ -183,7 +162,7 @@ def check_4xx(response: Response) -> ExceptionOrResponse:
     """
     return response_check(
             lambda rsp: str(rsp.status_code)[0] != "4",
-            ClientError,
+            exceptions.ClientError,
             response,
             )
 
@@ -265,6 +244,7 @@ class Api:
             paths: Dict[str,schema.IRemotePaths]):
         self._base_url = base_url
         self.paths = paths
+        logger.warning("The remotes.Api class is deprecated")
 
     def url(self,*args,**kwargs):
         url = os.path.join(self._base_url,*args)
@@ -277,7 +257,7 @@ class Api:
     @staticmethod
     def check_response(response):
         if response.status_code == 202:
-            raise OperationPending
+            raise exceptions.OperationPending
 
         if str(response.status_code)[0] == "2":
             pass

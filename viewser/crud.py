@@ -5,6 +5,10 @@ import logging
 from io import BytesIO
 import pandas as pd
 import requests
+from toolz.functoolz import curry
+from pymonad.either import Either, Left, Right
+from pymonad.maybe import Just, Nothing
+
 import views_schema
 from . import remotes, schema, exceptions
 
@@ -13,6 +17,13 @@ logger = logging.getLogger(__name__)
 PostedModel = TypeVar("PostedModel")
 ListedModel = TypeVar("ListedModel")
 DetailModel = TypeVar("DetailModel")
+
+class DeserializationError(Exception):
+    def __init__(self, bytes):
+        super().__init__(f"""
+            Could not deserialize as parquet:
+            \"{bytes[:50]}{'...' if len(bytes)>50 else ''}\"
+        """)
 
 class CrudOperations(ABC, Generic[PostedModel, ListedModel, DetailModel]):
 
@@ -92,24 +103,6 @@ class CrudOperations(ABC, Generic[PostedModel, ListedModel, DetailModel]):
         detail = self._http("GET", self._url(name))
         return self.__detail_model__(**detail.json())
 
-class QuerysetCrudOperations(CrudOperations[
-    views_schema.PostedQueryset,
-    views_schema.ListedQueryset,
-    views_schema.DetailQueryset]):
-    __posted_model__ = views_schema.PostedQueryset
-    __listed_model__ = views_schema.ListedQueryset
-    __detail_model__ = views_schema.DetailQueryset
-
-    __locations__ = {
-            "main": "querysets/querysets",
-            "fetch": "querysets/data"
-        }
-
-    def fetch(self, name: str)-> pd.DataFrame:
-        data = self._http(self._url(name, location = "fetch"))
-        data_buffer = BytesIO(data.content)
-        return pd.read_parquet(data_buffer)
-
 class DocumentationCrudOperations(CrudOperations[
     views_schema.PostedDocumentationPage,
     views_schema.ViewsDoc,
@@ -142,6 +135,46 @@ class DocumentationCrudOperations(CrudOperations[
     def list(self) -> views_schema.ViewsDoc:
         return self.show("")
 
+def deserialize(response: requests.Response) -> Either[Exception, pd.DataFrame]:
+    try:
+        return Right(pd.read_parquet(BytesIO(response.content)))
+    except OSError:
+        return Left(DeserializationError(response.content))
+
+def fetch_queryset(base_url: str, name: str,
+        start_date:Optional[str] = None, end_date:Optional[str] = None
+        ) -> Either[Exception, pd.DataFrame]:
+    """
+    fetch_queryset
+
+    Fetches queryset located at {base_url}/querysets/data/{name}
+
+    Args:
+        base_url(str)
+        name(str)
+        start_date(Optional[str]): Only fetch data after start_date
+        start_date(Optional[str]): Only fetch data before end_date
+
+    Returns:
+        Either[Exception, pd.DataFrame]
+
+    """
+    checks = [
+                curry(remotes.check_content_type, "application/octet-stream"),
+                remotes.check_pending,
+                remotes.check_4xx,
+                remotes.check_error,
+                remotes.check_404,
+             ]
+    request = curry(remotes.request,base_url,"GET",checks)
+    parameters = {k:v for k,v in {"start_date":start_date, "end_date":end_date}.items() if v is not None}
+    parameters = Just(parameters) if len(parameters) > 0 else Nothing
+    path = f"querysets/data/{name}"
+
+    return (request(path, parameters = parameters)
+            .then(deserialize)
+            )
+
 def check_parquet_response(response):
     if response.headers.get("Content-Type") == "application/octet-stream":
         pass
@@ -150,21 +183,6 @@ def check_parquet_response(response):
                 f"Remote {response.url} returned wrong content type: "
                 f"{response.headers.get('Content-Type')}"
                 )
-
-def fetch_queryset(
-        remotes_api: remotes.Api,
-        name,
-        start_date:Optional[str]=None,
-        end_date:Optional[str]=None):
-
-    response = remotes_api.remote(
-            schema.IRemotePaths.querysets,
-            path = "data/"+name,
-            parameters = {"start_date":start_date,"end_date": end_date}
-            )
-
-    check_parquet_response(response)
-    return pd.read_parquet(BytesIO(response.content))
 
 def post_queryset(
         remotes_api: remotes.Api,

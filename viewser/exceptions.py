@@ -1,6 +1,6 @@
+from collections import namedtuple
 from typing import Optional
 import json
-import re
 import functools
 
 import pkg_resources
@@ -14,9 +14,9 @@ def handle_http_exception(hint: str = None):
         def inner(*args,**kwargs):
             try:
                 fn(*args,**kwargs)
-            except requests.HTTPError as httpe:
+            except(requests.HTTPError, RequestError) as err:
                 raise RemoteError(
-                        response = httpe.response,
+                        response = err.response,
                         hint = hint
                     )
         return inner
@@ -30,6 +30,28 @@ def with_ansi(ansi):
             fn(self,msg,*args,**kwargs)
         return inner
     return wrapper
+
+class RequestError(Exception):
+    mock_response = namedtuple("mock_response", ("url","status_code", "content"))
+    def __init__(self, response):
+        self.response = response
+        self.url = response.url
+        self.status_code = response.status_code
+        self.content = response.content.decode()
+        super().__init__(f"{self.url} returned {self.status_code} ({self.content})")
+
+class OperationPending(RequestError):
+    def __init__(self, response: requests.Response):
+        super().__init__(self.mock_response(response.url, response.status_code, b"Pending..."))
+
+class RemoteError(RequestError):
+    pass
+
+class ClientError(RequestError):
+    pass
+
+class NotFoundError(RequestError):
+    pass
 
 class PrettyFormatter(click.HelpFormatter):
     def __init__(self,*args,**kwargs):
