@@ -16,7 +16,6 @@ from . import exceptions, schema
 
 logger = logging.getLogger(__name__)
 
-
 ExceptionOrResponse = Either[Exception,Response]
 
 def pydantic_validate(val, type):
@@ -57,6 +56,8 @@ def make_request(
 
     try:
         response = requests.request(*request_args,**request_kwargs)
+    except requests.exceptions.ConnectionError:
+        return Left(exceptions.ConnectionError(url))
     except requests.RequestException as re:
         return Left(re)
 
@@ -165,6 +166,20 @@ def check_4xx(response: Response) -> ExceptionOrResponse:
             response,
             )
 
+def check_specific_status(status_code: int, response: Response) -> ExceptionOrResponse:
+    """
+    Checks for a specific status code
+    """
+    return response_check(
+            lambda rsp: rsp.status_code == status_code,
+            lambda rsp: AssertionError(
+                "Response had wrong status code, "
+                f"expected {status_code}, got "
+                f"{rsp.status_code}"
+                ),
+            response
+            )
+
 status_checks = [
         check_4xx,
         check_pending,
@@ -198,9 +213,8 @@ def make_url(base_url: str, path: str, parameters = Nothing)-> Either[Exception,
             )
         return Right(with_pstring)
 
-    except pydantic.ValidationError as ve:
-        return Left(ve)
-
+    except pydantic.ValidationError:
+        return Left(exceptions.UrlParsingError(raw))
 def compose_checks(
         checks: List[ResponseCheck]
         )-> Callable[[ExceptionOrResponse],ExceptionOrResponse]:
@@ -237,71 +251,10 @@ def request(
     response = url.then(curry(make_request, method = method, json_data = data))
     return compose_checks(checks)(response)
 
-class Api:
-    def __init__(self,
-            base_url: str,
-            paths: Dict[str,schema.IRemotePaths]):
-        self._base_url = base_url
-        self.paths = paths
-        logger.warning("The remotes.Api class is deprecated")
-
-    def url(self,*args,**kwargs):
-        url = os.path.join(self._base_url,*args)
-
-        kwargs = {k:v for k,v in kwargs.items() if v is not None}
-        if kwargs:
-            url += "?" + parse.urlencode(kwargs)
-        return url
-
-    @staticmethod
-    def check_response(response):
-        if response.status_code == 202:
-            raise exceptions.OperationPending
-
-        if str(response.status_code)[0] == "2":
-            pass
-        else:
-            raise requests.HTTPError(response = response)
-
-    def remote(self,
-            base: schema.IRemotePaths,
-            path: str = "",
-            method = "GET",
-            parameters: Optional[Dict[str,str]] = {},
-            **kwargs):
-
-        path = os.path.join(self.paths[base],path)
-        return self._http(method, (path,), parameters, **kwargs)
-
-    def _http(self,method,path,parameters,*args,**kwargs):
-        url = self.url(*path,**parameters)
-        logger.debug("Requesting url %s",url)
-        try:
-            rsp = requests.request(method,url,*args,**kwargs)
-        except requests.exceptions.MissingSchema:
-            raise exceptions.ConfigurationError(
-                    f"Bad URL provided: \"{url}\"",
-                    hint = "Did you configure viewser correctly? "
-                        "Try running `viewser config list` to see your configuration"
-                )
-        self.check_response(rsp)
-        return rsp
-
 def browser(base,*args,**kwargs):
-    webbrowser.open(Api(base,{}).url(*args,**kwargs))
-
-def latest_pyproject_version(repo_url):
-    """
-    Gets the latest version of the CLI from Github
-    """
-    repo_path = parse.urlparse(repo_url).path
-    url = parse.urljoin("https://raw.githubusercontent.com/",repo_path)
-    url = os.path.join(url,"master/pyproject.toml")
-
-    rsp = requests.get(url)
-    Api.check_response(rsp)
-    pyproject = toml.loads(rsp.content.decode())
-    version = pyproject["tool"]["poetry"]["version"]
-    logger.debug("Latest version from github: %s",version)
-    return version
+    querystring = parse.urlencode(kwargs)
+    url = "/".join([base] + args)
+    if querystring:
+        url += "?"+querystring
+    webbrowser.open(url)
 

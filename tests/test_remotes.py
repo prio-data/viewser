@@ -3,7 +3,7 @@
 import logging
 from unittest import TestCase
 import responses
-from viewser import remotes
+from viewser import remotes, exceptions
 
 null = lambda _: None
 
@@ -19,7 +19,7 @@ class TestRemotes(TestCase):
                 )
 
         def validate(exc):
-            self.assertIs(type(exc), remotes.ClientError)
+            self.assertIs(type(exc), exceptions.ClientError)
 
         (remotes.request("http://www.foo.com","GET",[remotes.check_4xx],"bar")
                 .either(validate, self.fail)
@@ -35,7 +35,7 @@ class TestRemotes(TestCase):
                 )
 
         def validate(exc):
-            self.assertIs(type(exc), remotes.NotFoundError)
+            self.assertIs(type(exc), exceptions.NotFoundError)
 
         (remotes.request("http://www.foo.com","GET",[remotes.check_404],"bar")
                 .either(validate, self.fail)
@@ -51,7 +51,7 @@ class TestRemotes(TestCase):
                 )
 
         def validate(exc):
-            self.assertIs(type(exc), remotes.RemoteError)
+            self.assertIs(type(exc), exceptions.RemoteError)
 
         (remotes.request("http://www.foo.com","GET",[remotes.check_error],"bar")
                 .either(validate, self.fail)
@@ -67,7 +67,7 @@ class TestRemotes(TestCase):
                 )
 
         def validate(exc):
-            self.assertIs(type(exc), remotes.OperationPending)
+            self.assertIs(type(exc), exceptions.OperationPending)
 
         (remotes.request("http://www.foo.com","GET",[remotes.check_pending],"bar")
                 .either(validate, self.fail)
