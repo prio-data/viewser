@@ -1,4 +1,4 @@
-from collections import namedtuple
+from collections import defaultdict
 from typing import Optional
 import json
 import functools
@@ -21,20 +21,6 @@ def raise_pretty_exception(x: Exception):
         else:
             raise x
 
-def handle_http_exception(hint: str = None):
-    def wrapper(fn):
-        @functools.wraps(fn)
-        def inner(*args,**kwargs):
-            try:
-                fn(*args,**kwargs)
-            except(requests.HTTPError, RequestError) as err:
-                raise RemoteError(
-                        response = err.response,
-                        hint = hint
-                    )
-        return inner
-    return wrapper
-
 def with_ansi(ansi):
     def wrapper(fn):
         @functools.wraps(fn)
@@ -49,8 +35,8 @@ class PrettyFormatter(click.HelpFormatter):
         super().__init__(*args,**kwargs)
 
     @with_ansi(colorama.Fore.RED + colorama.Style.BRIGHT)
-    def write_heading(self, msg):
-        super().write_heading(msg)
+    def write_heading(self, heading):
+        super().write_heading(heading)
 
 class PrettyError(click.ClickException):
     error_name = "Error"
@@ -144,31 +130,42 @@ class UrlParsingError(PrettyError):
                     )
                 )
 
-class RequestError(PrettyError):
-    def create_message(self):
-        return f"\n{self.url} returned {self.status_code} \n\t({self.content})"
-
-    def __init__(self, response, hint: Optional[str] = None):
-        self.response = response
-        self.url = response.url
-        self.status_code = response.status_code
-        self.content = response.content.decode()
-        self.hint = hint
-        super().__init__(self.create_message(),hint)
-
-class OperationPending(RequestError):
-    def create_message(self):
-        return f"{self.url} is pending..."
-
-class ClientError(RequestError):
-    pass
-
-class NotFoundError(RequestError):
-    pass
-
 class DeserializationError(PrettyError):
+    error_name = "DeserializationError"
+
     def __init__(self, bytes):
         super().__init__(f"""
             Could not deserialize as parquet:
             \"{bytes[:50]}{'...' if len(bytes)>50 else ''}\"
         """)
+
+class RequestError(PrettyError):
+    error_name = "Request error"
+
+    def _http_default_hints(self):
+        defaults_filename = pkg_resources.resource_filename("viewser","data/status-codes.json")
+        with open(defaults_filename) as f:
+            return json.load(f)
+
+    def http_defaults(self, status_code):
+        return defaultdict(str, self._http_default_hints().get(str(status_code)))
+
+    def __init__(self, response, hint: Optional[str] = None):
+        self.response = response
+        self.url = response.url
+        self.status_code = response.status_code
+
+        defaults = self.http_defaults(self.status_code)
+
+        self.content = response.content.decode().strip() if response.content else defaults["phrase"]
+        self.hint = hint if hint is not None else defaults["description"]
+        super().__init__(self.content, self.hint)
+
+class OperationPending(RequestError):
+    error_name = "Pending..."
+
+class ClientError(RequestError):
+    error_name = "4xx client error"
+
+class NotFoundError(RequestError):
+    error_name = "404 not found"
