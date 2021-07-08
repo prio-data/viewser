@@ -50,13 +50,13 @@ class CrudOperations(ABC, Generic[PostedModel, ListedModel, DetailModel]):
         try:
             assert str(response.status_code)[0] == "2"
         except AssertionError as ae:
-            raise exceptions.RemoteError(response = response) from ae
+            raise exceptions.RequestError(response = response) from ae
         return response
 
     def _check_post_exists(self,name: str)-> bool:
         try:
             self.show(name)
-        except exceptions.RemoteError as re:
+        except exceptions.RequestError as re:
             if re.response.status_code == 404:
                 return False
             else:

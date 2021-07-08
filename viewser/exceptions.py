@@ -5,7 +5,6 @@ import functools
 
 import pkg_resources
 import colorama
-import requests
 import click
 
 def raise_pretty_exception(x: Exception):
@@ -29,6 +28,7 @@ def with_ansi(ansi):
             fn(self,msg,*args,**kwargs)
         return inner
     return wrapper
+
 class PrettyFormatter(click.HelpFormatter):
     def __init__(self,*args,**kwargs):
         colorama.init()
@@ -82,26 +82,6 @@ class ConfigurationError(PrettyError):
 
     def __init__(self,message: str, hint: Optional[str] = None):
         super().__init__(self.pretty_format(message, hint))
-
-class RemoteError(PrettyError):
-    """
-    Raised when something goes wrong with a request
-    """
-    error_name = "Remote error"
-
-    def __init__(self, response: requests.Response, hint: Optional[str] = None):
-        self.response = response
-        defaults_filename = pkg_resources.resource_filename("viewser","data/status-codes.json")
-        with open(defaults_filename) as f:
-            defaults = json.load(f)[str(response.status_code)]
-
-        content = response.content.decode().strip()
-        content = content if content else defaults["phrase"]
-        content = f"{response.url} returned {response.status_code}\n\n" + content
-
-        hint = hint if hint else defaults["description"]
-
-        super().__init__(content, hint)
 
 class ConnectionError(PrettyError):
     error_name = "Connection error"
@@ -172,6 +152,9 @@ class ClientError(RequestError):
 
 class NotFoundError(RequestError):
     error_name = "404 not found"
+
+class RemoteError(RequestError):
+    error_name = "5xx remote error"
 
 class RequestAssertionError(RequestError):
     error_name = "Assertion error"

@@ -107,10 +107,7 @@ def queryset_upload(
         click.echo(f"Renaming to {name}")
         qs.name = name
 
-    try:
-        click.echo(operations.publish_queryset(qs, overwrite = overwrite))
-    except (exceptions.RemoteError,requests.HTTPError) as err:
-        raise click.ClickException(str(err)) from err
+    click.echo(operations.publish_queryset(qs, overwrite = overwrite))
 
 @viewser.group(name="config", short_help="configure viewser")
 def config():
