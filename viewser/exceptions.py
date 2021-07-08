@@ -150,6 +150,9 @@ class RequestError(PrettyError):
     def http_defaults(self, status_code):
         return defaultdict(str, self._http_default_hints().get(str(status_code)))
 
+    def make_message(self):
+        return self.content
+
     def __init__(self, response, hint: Optional[str] = None):
         self.response = response
         self.url = response.url
@@ -169,3 +172,17 @@ class ClientError(RequestError):
 
 class NotFoundError(RequestError):
     error_name = "404 not found"
+
+class RequestAssertionError(RequestError):
+    error_name = "Assertion error"
+    def __init__(self, attr, expected, response):
+        self.attr = attr
+        self.expected = expected
+        self.actual = getattr(attr, response)
+        super().__init__(response)
+
+    def make_message(self):
+        return (
+                f"Response {self.attr} had unexpected value: "
+                f"Expected {self.expected}, got {self.actual}"
+            )

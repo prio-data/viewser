@@ -1,10 +1,8 @@
-from typing import Dict, Optional, Any, List, Callable
+from typing import Dict, Any, List, Callable
 import json
-import os
 import webbrowser
 import logging
 from urllib import parse
-import toml
 import requests
 from requests import Response
 import pydantic
@@ -12,7 +10,7 @@ from pymonad.either import Left, Right, Either
 from pymonad.maybe import Nothing, Maybe
 from toolz.functoolz import curry, compose
 
-from . import exceptions, schema
+from . import exceptions
 
 logger = logging.getLogger(__name__)
 
@@ -172,11 +170,7 @@ def check_specific_status(status_code: int, response: Response) -> ExceptionOrRe
     """
     return response_check(
             lambda rsp: rsp.status_code == status_code,
-            lambda rsp: AssertionError(
-                "Response had wrong status code, "
-                f"expected {status_code}, got "
-                f"{rsp.status_code}"
-                ),
+            curry(exceptions.RequestAssertionError, "status_code", status_code),
             response
             )
 
