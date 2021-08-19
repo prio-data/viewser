@@ -247,7 +247,7 @@ def request(
 
 def browser(base,*args,**kwargs):
     querystring = parse.urlencode(kwargs)
-    url = "/".join([base] + args)
+    url = "/".join([base] + list(args))
     if querystring:
         url += "?"+querystring
     webbrowser.open(url)
