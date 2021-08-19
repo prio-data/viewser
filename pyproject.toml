@@ -20,6 +20,7 @@ views-schema = "^0.6.0"
 toml = "^0.10.2"
 colorama = "^0.4.4"
 PyMonad = "^2.4.0"
+docker = "^5.0.0"
 
 [tool.poetry.scripts]
 viewser = "viewser.cli:viewser"

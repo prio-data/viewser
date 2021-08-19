@@ -6,11 +6,13 @@ import json
 from datetime import datetime
 from typing import Optional
 import io
+
+from pymonad.maybe import Nothing, Just
 import click
 import tabulate
 import requests
 import views_schema
-from . import settings, operations, remotes, exceptions, crud, formatting, context_objects
+from . import settings, operations, remotes, exceptions, crud, formatting, context_objects, notebooks
 
 logger = logging.getLogger(__name__)
 
@@ -385,3 +387,37 @@ def annotate_transform(
             )
         )
     )
+
+@viewser.group(name="notebooks", short_help="run ipython notebooks")
+def notebook_commands():
+    pass
+
+@notebook_commands.command(name="run", short_help="start the viewserspace ipython notebook server")
+@click.option("-r","--requirements-file", type = str, default = None)
+@click.option("-w","--work-dir", type = str, default = ".")
+@click.option("-v","--use-version", type = str, default="latest")
+def run_viewserspace(
+        use_version: str,
+        requirements_file: Optional[io.BufferedReader],
+        work_dir: str,
+        ):
+
+    if not requirements_file:
+        requirements_file = Nothing
+    else:
+        requirements_file = Just(requirements_file)
+
+    container = notebooks.run_notebook_server(
+            "viewsregistry.azurecr.io",
+            settings.config_get("NOTEBOOK_SERVER_IMAGE_REPOSITORY"),
+            use_version,
+            requirements_file,
+            work_dir,
+        )
+
+    try:
+        for ln in container.logs(stream = True):
+            print(ln.decode(), end = "")
+    finally:
+        container.kill()
+
