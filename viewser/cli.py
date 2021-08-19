@@ -1,4 +1,5 @@
 
+import sys
 from importlib.metadata import version
 import logging
 import json
@@ -150,7 +151,12 @@ def config_get(name: str):
     """
     Get a configuration value.
     """
-    click.echo(f"{name}: {settings.config_get(name)}")
+    value = settings.config_get(name)
+    if value:
+        click.echo(f"{name}: {value}")
+    else:
+        click.echo(f"{name} not set")
+        sys.exit(1)
 
 @config.command(name="reset", short_help="reset default config values")
 @click.confirmation_option(prompt="Reset config?")

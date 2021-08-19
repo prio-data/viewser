@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "viewser"
-version = "3.4.1"
+version = "3.4.2"
 description = ""
 authors = ["peder2911 <pglandsverk@gmail.com>"]
 
