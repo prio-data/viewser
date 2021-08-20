@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "viewser"
-version = "3.4.2"
+version = "3.5.0"
 description = ""
 authors = ["peder2911 <pglandsverk@gmail.com>"]
 
@@ -20,6 +20,7 @@ views-schema = "^0.6.0"
 toml = "^0.10.2"
 colorama = "^0.4.4"
 PyMonad = "^2.4.0"
+docker = "^5.0.0"
 
 [tool.poetry.scripts]
 viewser = "viewser.cli:viewser"
