@@ -71,7 +71,7 @@ class Column():
         self.namespaces = TransformNamespaces(self)
 
     def _add_trf(self, transform):
-        self.operations.insert(len(self.operations)-1, transform)
+        self.operations.insert(1, transform)
 
     @col_copy_self
     def aggregate(self, aggregation):
