@@ -81,7 +81,7 @@ def delete_queryset(name):
             queryset_request(
                     "DELETE",
                     remotes.status_checks,
-                    f"queryset/{name}",
+                    f"querysets/{name}",
                     )
                 .either(exceptions.raise_pretty_exception, lambda _: f"Deleted {name}")
         )
