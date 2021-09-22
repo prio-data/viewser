@@ -1,8 +1,8 @@
+from sys import platform
 import time
 import webbrowser
 import json
 import hashlib
-import requests
 from urllib.parse import urlencode,urlunparse
 from operator import add
 import random
@@ -10,6 +10,7 @@ import logging
 from typing import Callable, Set, Tuple, Optional, Dict
 from contextlib import closing
 import os
+import requests
 import pydantic
 from toolz.functoolz import reduce, curry, do
 from pymonad.maybe import Maybe
@@ -27,7 +28,11 @@ logger = logging.getLogger(__name__)
 digest = lambda s: hashlib.md5(s.encode()).hexdigest()
 generate_token = lambda: digest(reduce(add, [str(random.random()) for i in range(128)]))
 
-occupied_ports:Callable[[], Set[int]] = lambda: {c.laddr.port for c in psutil.net_connections()}
+if platform in ["linux","linux2"]:
+    occupied_ports:Callable[[], Set[int]] = lambda: {c.laddr.port for c in psutil.net_connections()}
+else:
+    occupied_ports = set
+
 def seek_port(from_port:int) -> Optional[int]:
     if from_port > MAX_PORT:
         return None
