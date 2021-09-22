@@ -1,5 +1,6 @@
 
 import sys
+import webbrowser
 from importlib.metadata import version
 import logging
 import json
@@ -7,12 +8,14 @@ from datetime import datetime
 from typing import Optional
 import io
 
+from toolz.functoolz import identity
 from pymonad.maybe import Nothing, Just
+import docker
 import click
 import tabulate
 import requests
 import views_schema
-from . import settings, operations, remotes, exceptions, crud, formatting, context_objects, notebooks
+from . import settings, operations, remotes, exceptions, crud, formatting, context_objects, notebooks, ascii_art
 
 logger = logging.getLogger(__name__)
 
@@ -393,31 +396,50 @@ def notebook_commands():
     pass
 
 @notebook_commands.command(name="run", short_help="start the viewserspace ipython notebook server")
-@click.option("-r","--requirements-file", type = str, default = None)
-@click.option("-w","--work-dir", type = str, default = ".")
-@click.option("-v","--use-version", type = str, default="latest")
+@click.option("-r","--requirements-file", type = str, default = None, help = "Optional requirements file")
+@click.option("-w","--work-dir", type = str, default = ".", help = "Directory to mount")
+@click.option("-v","--use-version", type = str, default="latest", help="Image version to use")
+@click.option("--browser/--no-browser", type = bool, default=True, help="Automatically open a browser window")
+@click.option("--pull/--no-pull", type = bool, default=True, help="Check for environment updates")
 def run_viewserspace(
         use_version: str,
-        requirements_file: Optional[io.BufferedReader],
+        requirements_file: str,
         work_dir: str,
+        browser: bool,
+        pull: bool,
         ):
 
-    if not requirements_file:
-        requirements_file = Nothing
-    else:
-        requirements_file = Just(requirements_file)
+    requirements_file = Just(requirements_file) if requirements_file else Nothing
+    port = notebooks.seek_port(notebooks.START_PORT)
 
-    container = notebooks.run_notebook_server(
+    if not port:
+        click.echo("No available ports")
+        return
+
+    image = notebooks.notebook_image(
             "viewsregistry.azurecr.io",
             settings.config_get("NOTEBOOK_SERVER_IMAGE_REPOSITORY"),
             use_version,
-            requirements_file,
+            pull)
+
+    container_id, container_url = notebooks.run_notebook_server(
+            port,
+            image,
             work_dir,
+            requirements_file,
         )
 
-    try:
-        for ln in container.logs(stream = True):
-            print(ln.decode(), end = "")
-    finally:
-        container.kill()
+    click.echo(ascii_art.VIEWSERSPACE_LOGO)
 
+    print("Server running. Ctrl-C to stop.")
+    if browser:
+        webbrowser.open(container_url)
+    else:
+        print(f"To access, open {container_url}")
+
+    try:
+        while True:
+            pass
+    finally:
+        container = docker.client.from_env().containers.get(container_id)
+        container.kill()
