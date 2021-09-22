@@ -169,3 +169,19 @@ class RequestAssertionError(RequestError):
                 f"Response {self.attr} had unexpected value: "
                 f"Expected {self.expected}, got {self.actual}"
             )
+
+class ViewserspaceError(PrettyError):
+    error_name = "Viewserspace error"
+    DEFAULT_HINT = """
+These errors are usually related to Docker / Azure ACR authentication. Make
+sure that you have installed the credentials file in the proper location
+(~/.views/sp.json), and that the credentials are correct. Talk to an admin for
+credentials.
+    """
+
+    def __init__(self, message):
+        super().__init__(message, self.DEFAULT_HINT)
+
+def exception_raiser(exception:Exception, *args, **kwargs):
+    e = exception(*args, **kwargs)
+    raise e

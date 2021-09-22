@@ -8,7 +8,7 @@ from datetime import datetime
 from typing import Optional
 import io
 
-from toolz.functoolz import identity
+from toolz.functoolz import identity, curry
 from pymonad.maybe import Nothing, Just
 import docker
 import click
@@ -414,32 +414,14 @@ def run_viewserspace(
 
     if not port:
         click.echo("No available ports")
-        return
-
-    image = notebooks.notebook_image(
-            "viewsregistry.azurecr.io",
-            settings.config_get("NOTEBOOK_SERVER_IMAGE_REPOSITORY"),
-            use_version,
-            pull)
-
-    container_id, container_url = notebooks.run_notebook_server(
-            port,
-            image,
-            work_dir,
-            requirements_file,
-        )
-
-    click.echo(ascii_art.VIEWSERSPACE_LOGO)
-
-    print("Server running. Ctrl-C to stop.")
-    if browser:
-        webbrowser.open(container_url)
     else:
-        print(f"To access, open {container_url}")
-
-    try:
-        while True:
-            pass
-    finally:
-        container = docker.client.from_env().containers.get(container_id)
-        container.kill()
+        (notebooks.notebook_image(
+                settings.config_get("NOTEBOOK_SERVER_IMAGE_REGISTRY"),
+                settings.config_get("NOTEBOOK_SERVER_IMAGE_REPOSITORY"),
+                use_version,
+                pull)
+            .then(curry(notebooks.run_notebook_server, port, work_dir, requirements_file))
+            .either(
+                curry(exceptions.exception_raiser,exceptions.ViewserspaceError),
+                curry(notebooks.watch, browser, click.echo))
+            )

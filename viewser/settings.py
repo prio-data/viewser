@@ -43,7 +43,8 @@ DEFAULT_SETTINGS = {
         "HANDSHAKE_PATH": "",
         "REPO_URL": "https://www.github.com/prio-data/viewser",
         "LATEST_KNOWN_VERSION": "0.0.0",
-        "NOTEBOOK_SERVER_IMAGE_REPOSITORY": "prio-data/viewserspace"
+        "NOTEBOOK_SERVER_IMAGE_REPOSITORY": "prio-data/viewserspace",
+        "NOTEBOOK_SERVER_IMAGE_REGISTRY": "viewsregistry.azurecr.io"
     }
 
 CONFIG_DIR = os.path.expanduser("~/.views")

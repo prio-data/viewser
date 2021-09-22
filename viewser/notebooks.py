@@ -1,17 +1,20 @@
+import webbrowser
+import json
 import hashlib
-from pprint import pprint as pp
 from urllib.parse import urlencode,urlunparse
 from operator import add
 import random
 import logging
-from typing import Callable, Set, Dict, Any, Tuple, Optional
+from typing import Callable, Set, Tuple, Optional, Dict
 from contextlib import closing
 import os
-from toolz.functoolz import curry, reduce
-from pymonad.maybe import Maybe, Nothing, Just
+import pydantic
+from toolz.functoolz import reduce, curry, do
+from pymonad.maybe import Maybe
 from pymonad.either import Either, Left, Right
 import docker
 import psutil
+from . import settings, ascii_art
 
 START_PORT = 2000
 MAX_PORT=9999
@@ -25,28 +28,74 @@ generate_token = lambda: digest(reduce(add, [str(random.random()) for i in range
 occupied_ports:Callable[[], Set[int]] = lambda: {c.laddr.port for c in psutil.net_connections()}
 def seek_port(from_port:int) -> Optional[int]:
     if from_port > MAX_PORT:
-        return None 
+        return None
     else:
         return from_port if from_port not in occupied_ports() else seek_port(from_port+1)
 
 def make_url(port:int, token:str, host: str = "0.0.0.0"):
     return urlunparse(("http", f"{host}:{port}","","",urlencode({"token":token}),""))
 
-def notebook_image(registry: str, repository: str, version: str, pull: bool)-> str:
+class ServicePrincipal(pydantic.BaseModel):
+    clientId: str
+    clientSecret: str
+
+    def login_info(self):
+        return {
+                "username": self.clientId,
+                "password": self.clientSecret
+            }
+
+def local_sp() -> Either[str, ServicePrincipal]:
+    try:
+        sp_file_path = os.path.join(settings.CONFIG_DIR, "sp.json")
+        with open(sp_file_path) as f:
+            return Right(ServicePrincipal(**json.load(f)))
+    except FileNotFoundError:
+        return Left(f"Could not find SP file at {sp_file_path}")
+    except pydantic.ValidationError:
+        return Left(f"SP file at {sp_file_path} is corrupted")
+
+def assure_logged_in(
+        client: docker.DockerClient,
+        registry:str,
+        service_principal: ServicePrincipal)-> Dict[str,str]:
+    try:
+        logger.info(f"Authenticating to registry {registry} using local credentials")
+        return Right(client.login(
+                    **service_principal.login_info(),
+                    registry = registry))
+    except docker.errors.APIError as apie:
+        return Left(
+                f"Failed to authenticate to registry {registry}.\n"
+                "Bad credentials?\n"
+                f"Raw error: \"{str(apie.explanation)}\"")
+
+def notebook_image(
+        registry: str,
+        repository: str,
+        version: str,
+        pull: bool) -> Either[str,str]:
+
     name = registry + "/" + repository
+
     if pull:
-        logger.info("Getting the viewserspace image (this might take a while...)")
+        logger.info("Refreshing docker image (this might take a while...)")
         with closing(docker.client.from_env()) as client:
-            client.images.pull(name, tag = version)
+            return (local_sp()
+                .then(curry(assure_logged_in,client,registry))
+                .then(lambda _: Right(client.images.pull(name, tag = version)))
+                .then(curry(do,lambda img: logger.info(f"Using {img.short_id}")))
+                .then(lambda img: Right(img.tags[0]))
+                )
     else:
-        logger.debug("Using local image")
-    return name + ":" + version
+        tagged_name = name + ":" + version
+        return Right(tagged_name)
 
 def run_notebook_server(
         port: int,
-        image: str,
         working_directory: str,
         requirements_file: Maybe[str],
+        image: str,
         )-> Tuple[str, str]:
 
     volumes = {
@@ -86,3 +135,20 @@ def run_notebook_server(
 
         container = client.containers.run(**configuration)
         return (container.id, make_url(port, token))
+
+def watch(browser: bool, echo: Callable[[str],None], run_report: Tuple[str, str])-> None:
+    container_id, container_url = run_report
+    echo(ascii_art.VIEWSERSPACE_LOGO)
+
+    echo("Server running. Ctrl-C to stop.")
+    if browser:
+        webbrowser.open(container_url)
+    else:
+        echo(f"To access, open {container_url}")
+
+    try:
+        while True:
+            pass
+    finally:
+        container = docker.client.from_env().containers.get(container_id)
+        container.kill()
