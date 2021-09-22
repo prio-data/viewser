@@ -1,6 +1,8 @@
+import time
 import webbrowser
 import json
 import hashlib
+import requests
 from urllib.parse import urlencode,urlunparse
 from operator import add
 import random
@@ -138,9 +140,19 @@ def run_notebook_server(
 
 def watch(browser: bool, echo: Callable[[str],None], run_report: Tuple[str, str])-> None:
     container_id, container_url = run_report
-    echo(ascii_art.VIEWSERSPACE_LOGO)
+    echo("Booting up...")
 
+    status_code = -1
+    while status_code != 200:
+        try:
+            status_code = requests.get(container_url).status_code
+        except requests.ConnectionError:
+            status_code = -1
+        time.sleep(.1)
+
+    echo(ascii_art.VIEWSERSPACE_LOGO)
     echo("Server running. Ctrl-C to stop.")
+
     if browser:
         webbrowser.open(container_url)
     else:
