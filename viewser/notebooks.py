@@ -17,7 +17,7 @@ from pymonad.maybe import Maybe
 from pymonad.either import Either, Left, Right
 import docker
 import psutil
-from . import settings, ascii_art
+from . import settings, ascii_art, exceptions
 
 START_PORT = 2000
 MAX_PORT=9999
@@ -117,10 +117,10 @@ def run_notebook_server(
         }
 
     volumes = requirements_file.maybe(volumes, lambda fname: {
-            os.path.abspath(fname):{
+            os.path.abspath(fname): {
                 "bind": "/home/views/user_requirements.txt",
                 "mode": "ro"
-                }
+                }, **volumes
         })
 
     token = generate_token()
@@ -148,12 +148,32 @@ def watch(browser: bool, echo: Callable[[str],None], run_report: Tuple[str, str]
     echo("Booting up...")
 
     status_code = -1
-    while status_code != 200:
+    with closing(docker.client.from_env()) as docker_client:
+        container = docker_client.containers.get(container_id)
+        for line in container.attach(stream = True):
+            if status_code != 200:
+                print(line.decode())
+                try:
+                    status_code = requests.get(container_url).status_code
+                except requests.ConnectionError:
+                    status_code = -1
+            else:
+                break
+
+        echo("Made connection, checking container status...")
         try:
-            status_code = requests.get(container_url).status_code
-        except requests.ConnectionError:
-            status_code = -1
-        time.sleep(.1)
+            time.sleep(1)
+            print(docker_client.containers.get(container_id))
+        except docker.errors.NotFound:
+            raise exceptions.ViewserspaceError(
+                    "Container failed to launch",
+                    hint = (
+                        "This was probably due to a failed dependency download. "
+                        "Check the logs above."
+                        )
+                    )
+        else:
+            echo("Container OK!")
 
     echo(ascii_art.VIEWSERSPACE_LOGO)
     echo("Server running. Ctrl-C to stop.")

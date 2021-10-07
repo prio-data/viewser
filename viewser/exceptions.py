@@ -179,8 +179,9 @@ sure that you have installed the credentials file in the proper location
 credentials.
     """
 
-    def __init__(self, message):
-        super().__init__(message, self.DEFAULT_HINT)
+    def __init__(self, message, hint: Optional[str] = None):
+        hint = hint if hint is not None else self.DEFAULT_HINT
+        super().__init__(message, hint)
 
 def exception_raiser(exception:Exception, *args, **kwargs):
     e = exception(*args, **kwargs)
