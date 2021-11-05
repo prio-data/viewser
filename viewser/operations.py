@@ -45,6 +45,14 @@ def fetch(queryset_name:str, start_date: Optional[date] = None, end_date: Option
                     )
             retries += 1
             time.sleep(settings.config_get("RETRY_FREQUENCY"))
+    raise exceptions.PrettyError(
+            f"Exceeded max retries when trying to fetch {queryset_name}.",
+            hint = (
+                "Increase max number of retries. by running "
+                "viewser config set RETRIES $VALUE "
+                "where $VALUE is an appropriately big number."
+                )
+            )
 
 @check_pypi_version
 def list_querysets():

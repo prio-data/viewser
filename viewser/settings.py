@@ -6,6 +6,7 @@ import functools
 import logging
 import json
 
+import strconv
 import requests
 import fitin
 import click
@@ -137,7 +138,7 @@ def copy_to_config_file(fn):
         return val
     return inner
 
-def seek_config(sources: List[Callable[[str],str]], default: Callable[[str],str])-> str:
+def seek_config(sources: List[Callable[[str],str]], default: Callable[[str],str])-> Callable[[str],str]:
     def seeker(key):
         for source in sources:
 
@@ -148,11 +149,16 @@ def seek_config(sources: List[Callable[[str],str]], default: Callable[[str],str]
         return default()
     return seeker
 
-config_get = seek_config([
+config_sources = [
     fitin.environs_resolver(),
     fitin.dict_resolver(config_dict),
     copy_to_config_file(fitin.dict_resolver(DEFAULT_SETTINGS)),
-    ], str)
+    ]
+
+config_get = compose(
+        strconv.convert,
+        seek_config(config_sources,str)
+        )
 
 def is_config(key):
     try:
