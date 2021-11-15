@@ -78,8 +78,7 @@ def publish_queryset(queryset: views_schema.Queryset, overwrite: bool = True):
                     parameters = Just({"overwrite":overwrite}),
                     data = Just(queryset.dict()),
                     )
-                .then(lambda rsp: rsp.json())
-                .either(exceptions.raise_pretty_exception, identity)
+                .either(exceptions.raise_pretty_exception, lambda _: f"Published {queryset.name}")
         )
 
 
