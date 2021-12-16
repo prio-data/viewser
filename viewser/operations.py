@@ -29,29 +29,13 @@ def fetch(queryset_name:str, start_date: Optional[date] = None, end_date: Option
     """
     Fetches data for a queryset,
     """
-    retries = 0
-    while retries < settings.config_get("RETRIES"):
-        try:
-            return (fetching.fetch_queryset(
-                        REMOTE_URL,
-                        queryset_name,
-                        start_date, end_date
-                        )
-                        .either(exceptions.raise_pretty_exception, identity)
-                    )
-        except exceptions.OperationPending:
-            logger.info("Queryset \"%s\" is being compiled... (%s retries)",
-                    queryset_name, str(retries)
-                    )
-            retries += 1
-            time.sleep(settings.config_get("RETRY_FREQUENCY"))
-    raise exceptions.PrettyError(
-            f"Exceeded max retries when trying to fetch {queryset_name}.",
-            hint = (
-                "Increase max number of retries. by running "
-                "viewser config set RETRIES $VALUE "
-                "where $VALUE is an appropriately big number."
+    return (fetching.fetch_queryset(
+                settings.config_get("RETRIES"),
+                REMOTE_URL,
+                queryset_name,
+                start_date, end_date
                 )
+                .either(exceptions.raise_pretty_exception, identity)
             )
 
 @check_pypi_version

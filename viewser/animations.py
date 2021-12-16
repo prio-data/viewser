@@ -21,16 +21,13 @@ class WaitingAnimation():
 
     def end(self):
         self._erase_prev()
-        print_no_newline("\n")
 
 class LineAnimation(WaitingAnimation):
     CYCLE = (
-        ".       ",
-        " o      ",
-        "  O     ",
-        "   O    ",
-        "    O   ",
-        "     O  ",
-        "      o ",
-        "       .",
+        ".     ",
+        " o    ",
+        "  O   ",
+        "   O  ",
+        "    o ",
+        "     .",
         )

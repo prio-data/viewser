@@ -1,4 +1,5 @@
 
+import time
 from typing import Optional
 from io import BytesIO
 import pandas as pd
@@ -6,15 +7,21 @@ import requests
 from toolz.functoolz import curry
 from pymonad.either import Either, Left, Right
 from pymonad.maybe import Just, Nothing
-from . import remotes, exceptions
+from . import remotes, exceptions, animations
 
 def deserialize(response: requests.Response) -> Either[Exception, pd.DataFrame]:
-    try:
-        return Right(pd.read_parquet(BytesIO(response.content)))
-    except OSError:
-        return Left(exceptions.DeserializationError(response.content))
+    if response.status_code == 202:
+        # No data yet
+        return Right(None)
+    else:
+        try:
+            return Right(pd.read_parquet(BytesIO(response.content)))
+        except OSError:
+            return Left(exceptions.DeserializationError(response.content))
 
-def fetch_queryset(base_url: str, name: str,
+def fetch_queryset(
+        max_retries : int,
+        base_url: str, name: str,
         start_date:Optional[str] = None, end_date:Optional[str] = None
         ) -> Either[Exception, pd.DataFrame]:
     """
@@ -32,20 +39,44 @@ def fetch_queryset(base_url: str, name: str,
         Either[Exception, pd.DataFrame]
 
     """
+
     checks = [
-                curry(remotes.check_content_type, "application/octet-stream"),
-                remotes.check_pending,
                 remotes.check_4xx,
                 remotes.check_error,
                 remotes.check_404,
              ]
-    request = curry(remotes.request,base_url,"GET",checks)
+
     parameters = {
             k:v for k,v in {"start_date":start_date, "end_date":end_date}.items() if v is not None
             }
     parameters = Just(parameters) if len(parameters) > 0 else Nothing
     path = f"querysets/data/{name}"
 
-    return (request(path, parameters = parameters)
+    data, error = None, None
+    retries     = 0
+    anim        = animations.LineAnimation()
+
+    while not (data is not None or error is not None):
+        if retries > 0:
+            time.sleep(1)
+        anim.print_next()
+
+        data, error = (remotes.request(base_url, "GET", checks, path, parameters = parameters)
             .then(deserialize)
-            )
+            .either(
+                lambda error: (None, error),
+                lambda data: (data, None),
+                ))
+
+        if retries > max_retries:
+            error = exceptions.MaxRetries()
+
+        retries += 1
+
+    anim.end()
+
+    if data is not None:
+        return Right(data)
+    else:
+        return Left(error)
+
