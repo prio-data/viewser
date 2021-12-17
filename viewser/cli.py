@@ -15,7 +15,7 @@ import click
 import tabulate
 import requests
 import views_schema
-from . import settings, operations, remotes, exceptions, crud, formatting, context_objects, notebooks, ascii_art
+from . import settings, operations, remotes, exceptions, crud, formatting, context_objects, notebooks, ascii_art, formatting
 
 logger = logging.getLogger(__name__)
 
@@ -221,10 +221,8 @@ def tables(ctx: click.Context):
     """
     Commands used to inspect available tables and columns.
     """
-    ctx.obj = context_objects.DocumentationContext(
-                crud.DocumentationCrudOperations(settings.config_get("REMOTE_URL"), "tables"),
-                formatting.DocumentationFormatter()
-            )
+    ctx.obj = dict()
+    ctx.obj["operations"] = crud.DocumentationCrudOperations(settings.config_get("REMOTE_URL"), "tables")
 
 @tables.command(name="list", short_help="show available tables")
 @click.pass_obj
@@ -239,16 +237,9 @@ def list_tables(ctx_obj: context_objects.DocumentationContext):
             "viewser tables show {table} {column}."
         )
 
-    click.echo(
-        ctx_obj.format(
-            ctx_obj.operations.list(),
-            (
-                ("", formatting.title),
-                ("", formatting.entry_table),
-                ("", formatting.help_string(help)) if settings.is_config("VERBOSE") else None,
-            )
-        )
-    )
+    formatter = formatting.documentation_formatter.DocumentationTableFormatter()
+    result = ctx_obj["operations"].list()
+    click.echo(formatter.formatted(result))
 
 @tables.command(name="show", short_help="inspect table or column")
 @click.argument("table-name")
@@ -266,16 +257,12 @@ def show_tables(
     path = table_name
     if column_name:
         path += "/"+column_name
-    click.echo(
-        ctx_obj.format(
-            ctx_obj.operations.show(path),
-            (
-                ("", formatting.title),
-                ("Description", formatting.description),
-                ("Columns", formatting.entry_table) if column_name is None else None
-            )
-        )
-    )
+        formatter = formatting.documentation_formatter.DocumentationFormatter()
+    else:
+        formatter = formatting.documentation_formatter.DocumentationTableFormatter()
+
+    result = ctx_obj["operations"].show(path)
+    click.echo(formatter.formatted(result))
 
 @tables.command(name="annotate", short_help="add documentation text")
 @click.argument("content-file", type=click.File("r"))

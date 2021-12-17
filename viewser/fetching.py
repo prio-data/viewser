@@ -4,10 +4,10 @@ from typing import Optional
 from io import BytesIO
 import pandas as pd
 import requests
-from toolz.functoolz import curry
 from pymonad.either import Either, Left, Right
 from pymonad.maybe import Just, Nothing
-from . import remotes, exceptions, animations
+from views_schema import viewser as schema
+from . import remotes, animations, errors
 
 def deserialize(response: requests.Response) -> Either[Exception, pd.DataFrame]:
     if response.status_code == 202:
@@ -17,13 +17,13 @@ def deserialize(response: requests.Response) -> Either[Exception, pd.DataFrame]:
         try:
             return Right(pd.read_parquet(BytesIO(response.content)))
         except OSError:
-            return Left(exceptions.DeserializationError(response.content))
+            return Left(errors.deserialization_error(response))
 
 def fetch_queryset(
         max_retries : int,
         base_url: str, name: str,
         start_date:Optional[str] = None, end_date:Optional[str] = None
-        ) -> Either[Exception, pd.DataFrame]:
+        ) -> Either[schema.Dump, pd.DataFrame]:
     """
     fetch_queryset
 
@@ -36,7 +36,7 @@ def fetch_queryset(
         start_date(Optional[str]): Only fetch data before end_date
 
     Returns:
-        Either[Exception, pd.DataFrame]
+        Either[errors.Dump, pd.DataFrame]
 
     """
 
@@ -52,31 +52,24 @@ def fetch_queryset(
     parameters = Just(parameters) if len(parameters) > 0 else Nothing
     path = f"querysets/data/{name}"
 
-    data, error = None, None
-    retries     = 0
-    anim        = animations.LineAnimation()
+    retries = 0
+    anim    = animations.LineAnimation()
+    data    = Right(None)
 
-    while not (data is not None or error is not None):
+    while (data.is_right and data.value is None):
         if retries > 0:
             time.sleep(1)
+
         anim.print_next()
 
-        data, error = (remotes.request(base_url, "GET", checks, path, parameters = parameters)
-            .then(deserialize)
-            .either(
-                lambda error: (None, error),
-                lambda data: (data, None),
-                ))
+        data = (remotes.request(base_url, "GET", checks, path, parameters = parameters)
+            .then(deserialize))
 
         if retries > max_retries:
-            error = exceptions.MaxRetries()
+            data = Left(errors.max_retries())
 
         retries += 1
 
     anim.end()
 
-    if data is not None:
-        return Right(data)
-    else:
-        return Left(error)
-
+    return data

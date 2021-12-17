@@ -13,28 +13,12 @@ import click
 
 from toolz.functoolz import compose,curry
 
-from . import exceptions, schema
+from . import schema, exceptions
 
 logger = logging.getLogger(__name__)
 
-def try_to_reach(url):
-    try:
-        rsp = requests.get(url)
-        assert str(rsp.status_code)[0] == "2"
-    except (
-            requests.exceptions.MissingSchema,
-            requests.exceptions.ConnectionError,
-            requests.exceptions.ConnectTimeout,
-            AssertionError
-            ):
-        raise exceptions.ConfigurationError(
-                f"Could not reach url \"{url}\". Please enter a valid "
-                "remote url."
-            )
-    return url
-
 REQUIRED_SETTINGS = (
-            ("REMOTE_URL", try_to_reach),
+            ("REMOTE_URL", lambda: None),
         )
 
 DEFAULT_SETTINGS = {
@@ -45,7 +29,8 @@ DEFAULT_SETTINGS = {
         "REPO_URL": "https://www.github.com/prio-data/viewser",
         "LATEST_KNOWN_VERSION": "0.0.0",
         "NOTEBOOK_SERVER_IMAGE_REPOSITORY": "prio-data/viewserspace",
-        "NOTEBOOK_SERVER_IMAGE_REGISTRY": "viewsregistry.azurecr.io"
+        "NOTEBOOK_SERVER_IMAGE_REGISTRY": "viewsregistry.azurecr.io",
+        "ERROR_DUMP_DIRECTORY": "dumps",
     }
 
 CONFIG_DIR = os.path.expanduser("~/.views")
@@ -189,3 +174,5 @@ REMOTE_PATHS = {
         schema.IRemotePaths.querysets: "querysets",
         schema.IRemotePaths.documentation: "docs",
     }
+
+ERROR_DUMP_DIRECTORY = os.path.join(CONFIG_DIR, config_get("ERROR_DUMP_DIRECTORY"))

@@ -1,4 +1,3 @@
-from typing import List
 import views_schema
 from . import formatting, crud
 
@@ -9,8 +8,6 @@ class DocumentationContext():
         self.operations = documentation_operations
         self.formatter = formatter
 
-    def format(self,
-            doc: views_schema.ViewsDoc,
-            formatters: List[formatting.NamedFormatting]):
-        return self.formatter.formatted(doc, formatters)
+    def formatted_output(self, doc: views_schema.ViewsDoc):
+        return self.formatter.formatted(doc)
 
