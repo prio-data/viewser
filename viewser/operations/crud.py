@@ -4,8 +4,7 @@ import functools
 import logging
 import requests
 
-import views_schema
-from . import exceptions
+from viewser.error_handling import exceptions
 
 logger = logging.getLogger(__name__)
 
@@ -14,6 +13,12 @@ ListedModel = TypeVar("ListedModel")
 DetailModel = TypeVar("DetailModel")
 
 class CrudOperations(ABC, Generic[PostedModel, ListedModel, DetailModel]):
+    """
+    CrudOperations
+    ==============
+
+    Abstract class that can be used to create classes for doing CRUD operations
+    """
 
     @property
     @abstractmethod
@@ -45,7 +50,7 @@ class CrudOperations(ABC, Generic[PostedModel, ListedModel, DetailModel]):
         return url
 
     @functools.wraps(requests.request)
-    def _http(self,*args,**kwargs)-> requests.Request:
+    def _http(self,*args,**kwargs)-> requests.Response:
         response = requests.request(*args,**kwargs)
         try:
             assert str(response.status_code)[0] == "2"
@@ -90,35 +95,3 @@ class CrudOperations(ABC, Generic[PostedModel, ListedModel, DetailModel]):
     def show(self, name: str) -> DetailModel:
         detail = self._http("GET", self._url(name))
         return self.__detail_model__(**detail.json())
-
-class DocumentationCrudOperations(CrudOperations[
-    views_schema.PostedDocumentationPage,
-    views_schema.ViewsDoc,
-    views_schema.ViewsDoc]):
-
-    @property
-    def __locations__(self):
-        return {
-            "main": f"docs/{self.path}"
-        }
-
-    @property
-    def __listed_model__(self):
-        raise AttributeError("DocumentationCrud does not have a listed_model")
-
-    def __init__(self, base_url: str, path: str):
-        self.path = path
-        super().__init__(base_url)
-
-    __posted_model__ = views_schema.PostedDocumentationPage
-    __detail_model__ = views_schema.ViewsDoc
-
-    def _check_post_exists(self,name: str)->bool:
-        doc_page = self.show(name)
-        if doc_page.page is None:
-            return False
-        else:
-            return True
-
-    def list(self) -> views_schema.ViewsDoc:
-        return self.show("")

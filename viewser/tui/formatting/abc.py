@@ -1,13 +1,27 @@
 from contextlib import contextmanager
 import re
-from typing import Optional, List
+from typing import Optional, List, Generic,  TypeVar
 from abc import ABC, abstractmethod
 import click
 import colorama
-from views_schema import docs as schema
-from viewser.formatting import wrapped_views_doc, section
 
-class ViewserFormatter(click.HelpFormatter, ABC):
+T = TypeVar("T")
+U = TypeVar("U")
+
+class Section(ABC, Generic[T]):
+    TITLE: str = ""
+
+    def add_section(self, model: T, formatter: "Formatter")-> None:
+        compiled = self.compile_output(model)
+        if compiled:
+            with formatter.text_in_section(self.TITLE):
+                formatter.write(formatter.indented(compiled))
+
+    @abstractmethod
+    def compile_output(self, model: T) -> Optional[str]:
+        pass
+
+class Formatter(click.HelpFormatter, ABC, Generic[T]):
     _max_data_len = 150
     _divider_length = 32
     _divider_char = "-"
@@ -15,7 +29,7 @@ class ViewserFormatter(click.HelpFormatter, ABC):
 
     @property
     @abstractmethod
-    def SECTIONS(self)-> List[section.Section]:
+    def SECTIONS(self)-> List[Section[T]]:
         pass
 
     def __init__(self):
@@ -43,15 +57,14 @@ class ViewserFormatter(click.HelpFormatter, ABC):
         finally:
             self.write("\n"+self.indented(self.SEPARATOR)+"\n")
 
-    def formatted(self, model: schema.ViewsDoc):
-        doc = wrapped_views_doc.WrappedViewsDoc(model)
+    def _format(self, model: T):
+        for s in self.SECTIONS:
+            s.add_section(model, self)
+
+    def formatted(self, model: T) -> str:
         self.write("\n")
         self.indent()
-
-        for s in self.SECTIONS:
-            s.add_section(doc, self)
-
+        self._format(model)
         rendered = self.getvalue()
-
         longest_line = max([len(l) for l in rendered.split("\n")])
         return re.sub(self.SEPARATOR,"-"*longest_line,rendered)

@@ -1,6 +1,5 @@
 from typing import Dict, Any, List, Callable
 import json
-import webbrowser
 import logging
 from urllib import parse
 import requests
@@ -11,7 +10,7 @@ from pymonad.maybe import Nothing, Maybe
 from toolz.functoolz import curry, compose
 from views_schema import viewser as schema
 
-from . import errors
+from .error_handling import errors
 
 logger = logging.getLogger(__name__)
 
@@ -34,7 +33,7 @@ def make_request(
         Either[schema.Dump, Response]
     """
     request_args = [method, url]
-    request_kwargs = {"headers":{}}
+    request_kwargs: Dict[str, Any] = {"headers":{}}
 
     def update_kwargs(kwargs, data):
         kwargs.update({"data":data})
@@ -188,13 +187,6 @@ def request(
     url = make_url(base_url, path, parameters)
     response = url.then(curry(make_request, method = method, json_data = data))
     return compose_checks(checks)(response)
-
-def browser(base,*args,**kwargs):
-    querystring = parse.urlencode(kwargs)
-    url = "/".join([base] + list(args))
-    if querystring:
-        url += "?"+querystring
-    webbrowser.open(url)
 
 def pydantic_validate(val, type):
     class mdl(pydantic.BaseModel):

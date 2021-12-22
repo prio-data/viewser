@@ -1,24 +1,24 @@
-from environs import ParseResult
-from typing import Callable, List
+
 from enum import Enum
+from typing import Callable, List
 import os
 import functools
 import logging
 import json
 
 import strconv
-import requests
 import fitin
-import click
 
 from toolz.functoolz import compose,curry
 
-from . import schema, exceptions
+class IRemotePaths(Enum):
+    querysets = 1
+    documentation = 2
 
 logger = logging.getLogger(__name__)
 
 REQUIRED_SETTINGS = (
-            ("REMOTE_URL", lambda: None),
+            "REMOTE_URL",
         )
 
 DEFAULT_SETTINGS = {
@@ -159,20 +159,19 @@ except(AttributeError, KeyError):
     logging.basicConfig(level=logging.INFO)
 
 def configure_interactively():
-    for key,validate in REQUIRED_SETTINGS:
+    for setting in REQUIRED_SETTINGS:
         value = None
         while not value:
-            try:
-                value = validate(input(f"{key} >> "))
-            except exceptions.ConfigurationError as cfge:
-                click.echo(str(cfge.message))
+            value = input(f"{setting} >> ")
         config_set_in_file(
-                key,
+                setting, value
             )
 
 REMOTE_PATHS = {
-        schema.IRemotePaths.querysets: "querysets",
-        schema.IRemotePaths.documentation: "docs",
+        IRemotePaths.querysets: "querysets",
+        IRemotePaths.documentation: "docs",
     }
 
 ERROR_DUMP_DIRECTORY = os.path.join(CONFIG_DIR, config_get("ERROR_DUMP_DIRECTORY"))
+
+QUERYSET_URL = os.path.join(config_get("REMOTE_URL"), "querysets")

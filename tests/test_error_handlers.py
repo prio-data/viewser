@@ -5,7 +5,7 @@ import tempfile
 from io import StringIO
 import unittest
 from views_schema import viewser as schema
-from viewser.error_handling import FileErrorHandler, StreamHandler
+from viewser.error_handling.error_handling import FileErrorHandler, StreamHandler
 
 class TestErrorHandlers(unittest.TestCase):
     def setUp(self):

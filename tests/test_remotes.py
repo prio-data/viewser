@@ -1,9 +1,8 @@
 
-
-import logging
 from unittest import TestCase
 import responses
-from viewser import remotes, exceptions
+from views_schema import viewser as schema
+from viewser import remotes
 
 null = lambda _: None
 
@@ -19,7 +18,9 @@ class TestRemotes(TestCase):
                 )
 
         def validate(exc):
-            self.assertIs(type(exc), exceptions.ClientError)
+            self.assertIs(type(exc), schema.Dump)
+            self.assertEqual(exc.title, "400 client error")
+            self.assertIn(schema.MessageType.HINT, {m.message_type for m in exc.messages})
 
         (remotes.request("http://www.foo.com","GET",[remotes.check_4xx],"bar")
                 .either(validate, self.fail)
@@ -35,7 +36,9 @@ class TestRemotes(TestCase):
                 )
 
         def validate(exc):
-            self.assertIs(type(exc), exceptions.NotFoundError)
+            self.assertIs(type(exc), schema.Dump)
+            self.assertEqual(exc.title, "404 not found")
+            self.assertIn(schema.MessageType.HINT, {m.message_type for m in exc.messages})
 
         (remotes.request("http://www.foo.com","GET",[remotes.check_404],"bar")
                 .either(validate, self.fail)
@@ -51,24 +54,10 @@ class TestRemotes(TestCase):
                 )
 
         def validate(exc):
-            self.assertIs(type(exc), exceptions.RemoteError)
+            self.assertIs(type(exc), schema.Dump)
+            self.assertEqual(exc.title, "500 remote error")
+            self.assertIn(schema.MessageType.HINT, {m.message_type for m in exc.messages})
 
         (remotes.request("http://www.foo.com","GET",[remotes.check_error],"bar")
-                .either(validate, self.fail)
-                )
-
-    @responses.activate
-    def test_check_pending(self):
-        responses.add(
-                method = "GET",
-                url = "http://www.foo.com/bar",
-                body = "It's pending",
-                status = 202,
-                )
-
-        def validate(exc):
-            self.assertIs(type(exc), exceptions.OperationPending)
-
-        (remotes.request("http://www.foo.com","GET",[remotes.check_pending],"bar")
                 .either(validate, self.fail)
                 )

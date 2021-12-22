@@ -51,7 +51,7 @@ def connection_error(url: str):
 
 def remote_error(response: requests.Response):
     return schema.Dump(
-            title = "500 remote error.",
+            title = "500 remote error",
             timestamp = datetime.datetime.now(),
             messages = [
                     schema.Message(
@@ -73,7 +73,7 @@ def remote_error(response: requests.Response):
 
 def not_found_error(response: requests.Response):
     return schema.Dump(
-            title = "404 not found.",
+            title = "404 not found",
             timestamp = datetime.datetime.now(),
             messages = [
                     schema.Message(
@@ -86,7 +86,7 @@ def not_found_error(response: requests.Response):
 
 def client_error(response: requests.Response):
     return schema.Dump(
-            title = f"{response.status_code} client error.",
+            title = f"{response.status_code} client error",
             timestamp = datetime.datetime.now(),
             messages = [
                     schema.Message(

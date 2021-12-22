@@ -1,13 +1,20 @@
 import sys
-import click
-import shutil
 from typing import List, TextIO
 from abc import ABC, abstractmethod
 import os
 import datetime
 from views_schema import viewser as schema
+from viewser.tui.formatting import errors as error_formatting
+from pymonad.maybe import Nothing
 
 class ErrorDumpIO(ABC):
+    """
+    ErrorDumpIO
+    ===========
+
+    Abstract class for error handling, outputting error content (schema.Dump)
+    to some output.
+    """
 
     @abstractmethod
     def write(self, dump: schema.Dump):
@@ -21,6 +28,12 @@ class ErrorDumpIO(ABC):
 
 
 class FileErrorHandler(ErrorDumpIO):
+    """
+    FileErrorHandler
+    ================
+
+    Dumps error contents to file.
+    """
 
     def __init__(self, directory: str):
         self._directory = directory
@@ -41,54 +54,26 @@ class StreamHandler(ErrorDumpIO):
     ==================
 
     Reports back errors to the user via a stream (default sys.stdout).
-
     """
-    def __init__(self, stream : TextIO = sys.stdout):
-        self._buffer:   str = ""
-        self._stream = stream
-        self._hints:    List[schema.Message] = []
+    def __init__(self, stream: TextIO = sys.stdout):
+        self._stream: TextIO                 = stream
+
+        self._buffer: str                    = ""
+        self._hints: List[schema.Message]    = []
         self._messages: List[schema.Message] = []
+
+        self._formatter                      = error_formatting.ErrorFormatter()
+
         super().__init__()
 
     def write(self, dump: schema.Dump):
-        for message in dump.messages:
-            if message.message_type is schema.MessageType.HINT:
-                self._hints.append(message)
-            elif message.message_type is schema.MessageType.MESSAGE:
-                self._messages.append(message)
-
-        self._print()
-
-    def _separator(self, char: str = "="):
-        return char[0] * shutil.get_terminal_size()[0]
-
-    def _print(self):
-        self._stream.write(f"""
-
-MESSAGES
-~~~~~~~~
-{self._separator()}
-        """)
-
-        for message in self._messages:
-            self._stream.write(message.content)
-
-        self._stream.write(f"""
-
-HINTS
-~~~~~
-{self._separator()}
-        """)
-
-        for hint in self._hints:
-            self._stream.write(hint.content)
-
-        self._buffer = ""
+        self._stream.write(self._formatter.formatted(dump))
 
 class ErrorDumper():
     def __init__(self, writers: List[ErrorDumpIO]):
         self._writers = writers
 
-    def dump(self, error_dump: schema.Dump):
+    def dump(self, error_dump: schema.Dump) -> Nothing:
         for writer in self._writers:
             writer.write(error_dump)
+        return Nothing
