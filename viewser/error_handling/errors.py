@@ -1,7 +1,9 @@
 
+from typing import Callable
 import base64
 import json
 import datetime
+import pydantic
 import requests
 from views_schema import viewser as schema
 
@@ -16,6 +18,21 @@ def response_as_json(response: requests.Response):
             "http_status": response.status_code,
             "content":     content,
         })
+
+def try_to_propagate(function: Callable[[requests.Response], schema.Dump])-> Callable[[requests.Response], schema.Dump]:
+    """
+    try_to_propagate
+    ================
+
+    Try to propagate an error dump from the remote, before running the local
+    function to produce a fallback error.
+    """
+    def inner(response: requests.Response) -> schema.Dump:
+        try:
+            return schema.Dump(response.json())
+        except (json.JSONDecodeError, pydantic.ValidationError):
+            return function(response)
+    return inner
 
 def max_retries():
     return schema.Dump(
@@ -49,6 +66,7 @@ def connection_error(url: str):
                                 "config set REMOTE_URL."))
                 ])
 
+@try_to_propagate
 def remote_error(response: requests.Response):
     return schema.Dump(
             title = "500 remote error",
@@ -71,6 +89,7 @@ def remote_error(response: requests.Response):
                         )
                 ])
 
+@try_to_propagate
 def not_found_error(response: requests.Response):
     return schema.Dump(
             title = "404 not found",
@@ -84,6 +103,7 @@ def not_found_error(response: requests.Response):
                         content = "Did you mistype something?"),
                 ])
 
+@try_to_propagate
 def client_error(response: requests.Response):
     return schema.Dump(
             title = f"{response.status_code} client error",
