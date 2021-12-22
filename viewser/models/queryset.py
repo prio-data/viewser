@@ -1,9 +1,13 @@
 from copy import deepcopy
 import logging
-
-from . import models, operations
+import pydantic
+from views_schema import queryset_manager as schema
+from viewser.operations import queryset as queryset_operations
+from viewser import settings
 
 logger = logging.getLogger(__name__)
+
+operations = queryset_operations.QuerysetOperations(settings.QUERYSET_URL)
 
 def deepcopy_self(fn):
     def inner(self, *args,**kwargs):
@@ -17,7 +21,7 @@ class Transform():
         self.column = column
 
     def __call__(self, *arguments):
-        op = models.TransformOperation(
+        op = schema.TransformOperation(
                 name = self.namespace + "." + self.name,
                 arguments = arguments)
 
@@ -61,9 +65,9 @@ class Column():
         inject = list() if not _inject else _inject
 
         self.operations = [
-                models.RenameOperation(arguments=[name]),
+                schema.RenameOperation(arguments=[name]),
                 *inject,
-                models.DatabaseOperation(
+                schema.DatabaseOperation(
                     name = from_table+"."+from_column, arguments = ["values"]
                     )
             ]
@@ -96,7 +100,7 @@ class Column():
         return new
 
 
-class Queryset(models.Queryset):
+class Queryset(schema.Queryset):
 
     def __init__(self, name, at):
         super().__init__(name = name, loa = at, operations = [])

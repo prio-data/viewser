@@ -1,40 +1,24 @@
-from environs import ParseResult
-from typing import Callable, List
+
 from enum import Enum
+from typing import Callable, List
 import os
 import functools
 import logging
 import json
 
 import strconv
-import requests
 import fitin
-import click
 
 from toolz.functoolz import compose,curry
 
-from . import exceptions, schema
+class IRemotePaths(Enum):
+    querysets = 1
+    documentation = 2
 
 logger = logging.getLogger(__name__)
 
-def try_to_reach(url):
-    try:
-        rsp = requests.get(url)
-        assert str(rsp.status_code)[0] == "2"
-    except (
-            requests.exceptions.MissingSchema,
-            requests.exceptions.ConnectionError,
-            requests.exceptions.ConnectTimeout,
-            AssertionError
-            ):
-        raise exceptions.ConfigurationError(
-                f"Could not reach url \"{url}\". Please enter a valid "
-                "remote url."
-            )
-    return url
-
 REQUIRED_SETTINGS = (
-            ("REMOTE_URL", try_to_reach),
+            "REMOTE_URL",
         )
 
 DEFAULT_SETTINGS = {
@@ -45,7 +29,8 @@ DEFAULT_SETTINGS = {
         "REPO_URL": "https://www.github.com/prio-data/viewser",
         "LATEST_KNOWN_VERSION": "0.0.0",
         "NOTEBOOK_SERVER_IMAGE_REPOSITORY": "prio-data/viewserspace",
-        "NOTEBOOK_SERVER_IMAGE_REGISTRY": "viewsregistry.azurecr.io"
+        "NOTEBOOK_SERVER_IMAGE_REGISTRY": "viewsregistry.azurecr.io",
+        "ERROR_DUMP_DIRECTORY": "dumps",
     }
 
 CONFIG_DIR = os.path.expanduser("~/.views")
@@ -174,18 +159,19 @@ except(AttributeError, KeyError):
     logging.basicConfig(level=logging.INFO)
 
 def configure_interactively():
-    for key,validate in REQUIRED_SETTINGS:
+    for setting in REQUIRED_SETTINGS:
         value = None
         while not value:
-            try:
-                value = validate(input(f"{key} >> "))
-            except exceptions.ConfigurationError as cfge:
-                click.echo(str(cfge.message))
+            value = input(f"{setting} >> ")
         config_set_in_file(
-                key,
+                setting, value
             )
 
 REMOTE_PATHS = {
-        schema.IRemotePaths.querysets: "querysets",
-        schema.IRemotePaths.documentation: "docs",
+        IRemotePaths.querysets: "querysets",
+        IRemotePaths.documentation: "docs",
     }
+
+ERROR_DUMP_DIRECTORY = os.path.join(CONFIG_DIR, config_get("ERROR_DUMP_DIRECTORY"))
+
+QUERYSET_URL = os.path.join(config_get("REMOTE_URL"), "querysets")

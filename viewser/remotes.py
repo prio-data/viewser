@@ -1,6 +1,5 @@
 from typing import Dict, Any, List, Callable
 import json
-import webbrowser
 import logging
 from urllib import parse
 import requests
@@ -9,22 +8,16 @@ import pydantic
 from pymonad.either import Left, Right, Either
 from pymonad.maybe import Nothing, Maybe
 from toolz.functoolz import curry, compose
+from views_schema import viewser as schema
 
-from . import exceptions
+from .error_handling import errors
 
 logger = logging.getLogger(__name__)
-
-ExceptionOrResponse = Either[Exception,Response]
-
-def pydantic_validate(val, type):
-    class mdl(pydantic.BaseModel):
-        x: type
-    return mdl(x=val).x
 
 def make_request(
         url: str,
         method: str = "GET",
-        json_data: Maybe[Dict[str,Any]] = Nothing) -> ExceptionOrResponse:
+        json_data: Maybe[Dict[str,Any]] = Nothing) -> Either[schema.Dump, Response]:
     """
     make request
 
@@ -37,10 +30,10 @@ def make_request(
         json_data(Maybe[Dict[str,Any]]): Optional JSON data to pass with request
 
     Returns:
-        Either[Exception, Response]
+        Either[schema.Dump, Response]
     """
     request_args = [method, url]
-    request_kwargs = {"headers":{}}
+    request_kwargs: Dict[str, Any] = {"headers":{}}
 
     def update_kwargs(kwargs, data):
         kwargs.update({"data":data})
@@ -55,16 +48,16 @@ def make_request(
     try:
         response = requests.request(*request_args,**request_kwargs)
     except requests.exceptions.ConnectionError:
-        return Left(exceptions.ConnectionError(url))
+        return Left(errors.connection_error(url))
     except requests.RequestException as re:
-        return Left(re)
+        return Left(errors.request_exception(re))
 
     return Right(response)
 
 def response_check(
         check_fn: Callable[[Response],bool],
-        exc_fn: Callable[[Response], Exception],
-        response: Response) -> ExceptionOrResponse:
+        exc_fn: Callable[[Response], schema.Dump],
+        response: Response) -> Either[schema.Dump, requests.Response]:
     """
     response_check
 
@@ -86,23 +79,9 @@ def response_check(
     else:
         return Right(response)
 
-ResponseCheck = Callable[[ExceptionOrResponse], ExceptionOrResponse]
+ResponseCheck = Callable[[Either[schema.Dump, requests.Response]], Either[schema.Dump, requests.Response]]
 
-def check_pending(response: Response) -> ExceptionOrResponse:
-    """
-    check_pending
-
-    Checks whether a response returned a status 202, which signifies that the
-    requested result is still pending.
-    """
-    logger.debug(f"Checking if {response.url} is pending")
-    return response_check(
-            lambda rsp: rsp.status_code != 202,
-            exceptions.OperationPending,
-            response
-        )
-
-def check_error(response: Response) -> ExceptionOrResponse:
+def check_error(response: Response) -> Either[schema.Dump, requests.Response]:
     """
     check_error
 
@@ -110,37 +89,12 @@ def check_error(response: Response) -> ExceptionOrResponse:
     request resulted in an error on the remote server.
     """
     logger.debug(f"Checking if {response.url} resulted in an error")
-    return response_check(
-            lambda rsp: str(rsp.status_code)[0] != "5", exceptions.RemoteError,
+    return response_check(lambda rsp: str(rsp.status_code)[0] != "5",
+            errors.remote_error,
             response
         )
 
-def check_content_type(content_type: str, response: Response) -> ExceptionOrResponse:
-    """
-    check_content_type
-
-    Check whether a response returned the correct content type.
-    """
-    logger.debug(f"Checking if {response.url} had the correct Content-Type ({content_type})")
-    get_content_type = lambda rsp: rsp.headers["Content-Type"]
-
-    try:
-        return response_check(
-                lambda rsp: get_content_type(rsp) == content_type,
-                lambda _: TypeError(f"""
-                    {response.url} had wrong content type.
-                    Expected: {content_type}
-                    Got: {get_content_type(response)}
-                    """),
-                response
-                )
-    except KeyError:
-        return Left(TypeError(f"""
-            {response.url} had no content type in header.
-            Expected: {content_type}
-        """))
-
-def check_404(response: Response) -> ExceptionOrResponse:
+def check_404(response: Response) -> Either[schema.Dump, requests.Response]:
     """
     check_404
 
@@ -148,11 +102,11 @@ def check_404(response: Response) -> ExceptionOrResponse:
     """
     return response_check(
             lambda rsp: rsp.status_code != 404,
-            exceptions.NotFoundError,
+            errors.not_found_error,
             response,
             )
 
-def check_4xx(response: Response) -> ExceptionOrResponse:
+def check_4xx(response: Response) -> Either[schema.Dump, requests.Response]:
     """
     check_4xx
 
@@ -160,23 +114,12 @@ def check_4xx(response: Response) -> ExceptionOrResponse:
     """
     return response_check(
             lambda rsp: str(rsp.status_code)[0] != "4",
-            exceptions.ClientError,
+            errors.client_error,
             response,
-            )
-
-def check_specific_status(status_code: int, response: Response) -> ExceptionOrResponse:
-    """
-    Checks for a specific status code
-    """
-    return response_check(
-            lambda rsp: rsp.status_code == status_code,
-            curry(exceptions.RequestAssertionError, "status_code", status_code),
-            response
             )
 
 status_checks = [
         check_4xx,
-        check_pending,
         check_404,
         check_error,
     ]
@@ -208,10 +151,10 @@ def make_url(base_url: str, path: str, parameters = Nothing)-> Either[Exception,
         return Right(with_pstring)
 
     except pydantic.ValidationError:
-        return Left(exceptions.UrlParsingError(raw))
+        return Left(errors.url_parsing_error(raw))
 def compose_checks(
         checks: List[ResponseCheck]
-        )-> Callable[[ExceptionOrResponse],ExceptionOrResponse]:
+        )-> Callable[[Either[schema.Dump, requests.Response]], Either[schema.Dump, requests.Response]]:
     make_then = lambda fn: lambda x: x.then(fn)
     return compose(*[make_then(fn) for fn in checks])
 
@@ -222,7 +165,7 @@ def request(
         path: str,
         parameters: Maybe[Dict[str,str]] = Nothing,
         data: Maybe[Dict[str,Any]] = Nothing
-        ) -> ExceptionOrResponse:
+        ) -> Either[schema.Dump, Response]:
     """
     request
 
@@ -239,16 +182,13 @@ def request(
         data(Maybe[Dict[str,Any]]): An optional JSON dict to send to the server
 
     Returns:
-        Either[Response, Exception]
+        Either[schema.Dump, Response]
     """
     url = make_url(base_url, path, parameters)
     response = url.then(curry(make_request, method = method, json_data = data))
     return compose_checks(checks)(response)
 
-def browser(base,*args,**kwargs):
-    querystring = parse.urlencode(kwargs)
-    url = "/".join([base] + list(args))
-    if querystring:
-        url += "?"+querystring
-    webbrowser.open(url)
-
+def pydantic_validate(val, type):
+    class mdl(pydantic.BaseModel):
+        x: type
+    return mdl(x=val).x

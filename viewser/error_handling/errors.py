@@ -1,0 +1,138 @@
+
+import base64
+import json
+import datetime
+import requests
+from views_schema import viewser as schema
+
+def response_as_json(response: requests.Response):
+    try:
+        content = response.content.decode()
+    except UnicodeDecodeError:
+        content = base64.b64encode(response.content).decode()
+
+    return json.dumps({
+            "url":         response.url,
+            "http_status": response.status_code,
+            "content":     content,
+        })
+
+def max_retries():
+    return schema.Dump(
+            title = "Max number of retries!",
+            timestamp = datetime.datetime.now(),
+            messages = [
+                    schema.Message(
+                            message_type = schema.MessageType.MESSAGE,
+                            content = ("You reached the maximum number of "
+                                "retries while waiting for data." )),
+                    schema.Message(
+                            message_type = schema.MessageType.HINT,
+                            content = ("Try increasing the max. allowed number "
+                                "of retries by running `viewser config RETRIES "
+                                "{larger_number}"))
+                ])
+
+def connection_error(url: str):
+    return schema.Dump(
+            title = "Connection error!",
+            timestamp = datetime.datetime.now(),
+            messages = [
+                    schema.Message(
+                            message_type = schema.MessageType.MESSAGE,
+                            content = (f"You failed to connect to {url}.")),
+                    schema.Message(
+                            message_type = schema.MessageType.HINT,
+                            content = ("Is the REMOTE_URL correct? View the "
+                                "currently set REMOTE_URL by running viewser "
+                                "config show REMOTE_URL. Change it with viewser "
+                                "config set REMOTE_URL."))
+                ])
+
+def remote_error(response: requests.Response):
+    return schema.Dump(
+            title = "500 remote error",
+            timestamp = datetime.datetime.now(),
+            messages = [
+                    schema.Message(
+                        content = "Internal server error!"
+                        ),
+
+                    schema.Message(
+                        message_type = schema.MessageType.HINT,
+                        content = ("This kind of error is caused by something "
+                            "going wrong on the server. Please contact and "
+                            "administrator right away.")
+                        ),
+
+                    schema.Message(
+                        message_type = schema.MessageType.DUMP,
+                        content = response_as_json(response)
+                        )
+                ])
+
+def not_found_error(response: requests.Response):
+    return schema.Dump(
+            title = "404 not found",
+            timestamp = datetime.datetime.now(),
+            messages = [
+                    schema.Message(
+                        content = (f"The url {response.url} refers to a resource "
+                        "that does not exist on the server.")),
+                    schema.Message(
+                        message_type = schema.MessageType.HINT,
+                        content = "Did you mistype something?"),
+                ])
+
+def client_error(response: requests.Response):
+    return schema.Dump(
+            title = f"{response.status_code} client error",
+            timestamp = datetime.datetime.now(),
+            messages = [
+                    schema.Message(
+                        content = ("The request was not accepted by the server, because it did not have the right format.")),
+                    schema.Message(
+                        message_type = schema.MessageType.HINT,
+                        content = ("These messages might be caused by using an "
+                        "old version of viewser that is not supported by the "
+                        "currently running server version. Try updating viewser "
+                        "with pip install --upgrade viewser.")),
+                ])
+
+def url_parsing_error(url: str):
+    return schema.Dump(
+            title = "Failed to parse URL",
+            timestamp = datetime.datetime.now(),
+            messages = [
+                    schema.Message(
+                        content = (f"Failed to parse url: {url}")),
+                    schema.Message(
+                        message_type = schema.MessageType.HINT,
+                        content = ("This is indicative of an issue with "
+                            "viewser. Contact an admin and copy-paste this error "
+                            "message.")),
+                ])
+
+def request_exception(exception: requests.RequestException):
+    return schema.Dump(
+            title = f"{str(exception)}",
+            timestamp = datetime.datetime.now(),
+            messages = [
+                    schema.Message(
+                        content = ("Encountered an unhandled exception while making a request."))
+                ])
+
+def deserialization_error(response: requests.Response):
+    return schema.Dump(
+            title = "Deserialization error",
+            timestamp = datetime.datetime.now(),
+            messages = [
+                    schema.Message(
+                        content = ("Failed to deserialize data from response "
+                            "content. The response had HTTP status "
+                            f"{response.status_code}.")),
+                    schema.Message(
+                        message_type = schema.MessageType.DUMP,
+                        content = (response_as_json(response))),
+                ]
+            )

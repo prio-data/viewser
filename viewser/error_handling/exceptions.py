@@ -41,8 +41,10 @@ class PrettyFormatter(click.HelpFormatter):
 class PrettyError(click.ClickException):
     error_name = "Error"
     is_pretty = True
+    DEFAULT_HINT = None
 
     def __init__(self, message: str, hint: Optional[str] = None):
+        hint = hint if hint else (self.DEFAULT_HINT if self.DEFAULT_HINT else None)
         super().__init__(self.pretty_format(message,hint))
 
     def pretty_format(self, message: str, hint: Optional[str] = None):
@@ -186,3 +188,16 @@ credentials.
 def exception_raiser(exception:Exception, *args, **kwargs):
     e = exception(*args, **kwargs)
     raise e
+
+class MaxRetries(PrettyError):
+    error_name = "Max retries"
+
+    DEFAULT_HINT = """
+Your request reached the currently configured maximum number of retries.
+To increase the limit for max retries, run this command:
+
+viewser config set MAX_RETRIES { a bigger number }
+    """
+
+    def __init__(self):
+        super().__init__("Max number of retries reached")

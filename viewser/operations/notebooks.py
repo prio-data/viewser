@@ -17,7 +17,9 @@ from pymonad.maybe import Maybe
 from pymonad.either import Either, Left, Right
 import docker
 import psutil
-from . import settings, ascii_art, exceptions
+from viewser import settings
+from viewser.error_handling import exceptions
+from viewser.tui import ascii_art
 
 START_PORT = 2000
 MAX_PORT=9999

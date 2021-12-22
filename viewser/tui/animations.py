@@ -4,7 +4,7 @@ import itertools
 print_no_newline = partial(print, end = "", flush = True)
 
 class WaitingAnimation():
-    CYCLE = ("-","\\", "|", "/")
+    CYCLE = ["-","\\", "|", "/"]
     def __init__(self, message: str = ""):
         self._animation_cycle = itertools.cycle(self.CYCLE)
         self._previous_output = ""
@@ -21,16 +21,13 @@ class WaitingAnimation():
 
     def end(self):
         self._erase_prev()
-        print_no_newline("\n")
 
 class LineAnimation(WaitingAnimation):
-    CYCLE = (
-        ".       ",
-        " o      ",
-        "  O     ",
-        "   O    ",
-        "    O   ",
-        "     O  ",
-        "      o ",
-        "       .",
-        )
+    CYCLE = [
+        ".     ",
+        " o    ",
+        "  O   ",
+        "   O  ",
+        "    o ",
+        "     .",
+        ]
