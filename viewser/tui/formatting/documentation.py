@@ -75,7 +75,7 @@ class DocumentationTableSection(DocumentationSection):
             row = self.str_str_dict(entry.dict())
             row.update(self.str_str_dict(entry.data))
             data.append(row)
-        return tabulate.tabulate(data, headers="keys") + "\n"
+        return tabulate.tabulate(data, headers="keys", tablefmt = "pipe") + "\n"
 
 class DocumentationFormatter(abc.Formatter[schema.ViewsDoc]):
     def formatted(self, model: schema.ViewsDoc)-> str:
@@ -84,19 +84,19 @@ class DocumentationFormatter(abc.Formatter[schema.ViewsDoc]):
 
 class DocumentationDetailFormatter(DocumentationFormatter):
     SECTIONS = [
-            Title(),
-            Description(),
+            Title,
+            Description,
         ]
 
 class DocumentationTableFormatter(DocumentationFormatter):
     SECTIONS = [
-            Title(),
-            Description(),
-            DocumentationTableSection()
+            Title,
+            Description,
+            DocumentationTableSection
         ]
 
 class FunctionDetailFormatter(DocumentationFormatter):
     SECTIONS = [
-            FunctionSection(),
-            Description()
+            FunctionSection,
+            Description
         ]
