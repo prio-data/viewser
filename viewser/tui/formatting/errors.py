@@ -21,6 +21,6 @@ class RecoveryHints(ErrorSection):
 
 class ErrorFormatter(abc.Formatter[schema.Dump]):
     SECTIONS = [
-        ErrorMessages(),
-        RecoveryHints(),
+        ErrorMessages,
+        RecoveryHints,
         ]

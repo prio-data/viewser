@@ -4,8 +4,8 @@ from abc import ABC, abstractmethod
 import os
 import datetime
 from views_schema import viewser as schema
-from viewser.tui.formatting import errors as error_formatting
 from pymonad.maybe import Nothing
+from viewser.tui.formatting import errors as error_formatting
 
 class ErrorDumpIO(ABC):
     """
@@ -19,9 +19,6 @@ class ErrorDumpIO(ABC):
     @abstractmethod
     def write(self, dump: schema.Dump):
         pass
-
-    def name(self, dump: schema.Dump, message: schema.Message) -> str:
-        return f"viewser_{self.strftime(dump.timestamp)}_{dump.title}_{message.message_type.name}"
 
     def strftime(self, time: datetime.datetime):
         return time.strftime("%Y-%m-%d_%H:%M:%S")
@@ -40,13 +37,14 @@ class FileErrorHandler(ErrorDumpIO):
         os.makedirs(self._directory, exist_ok = True)
 
     def write(self, dump: schema.Dump):
-        for message in dump.messages:
-            with open(self._path(dump, message), "w") as f:
-                f.write(message.content)
+        with open(self._path(dump), "w") as f:
+            f.write(dump.json())
 
-    def _path(self, dump: schema.Dump, message: schema.Message):
-        return os.path.join(self._directory, self.name(dump, message))
+    def _name(self, dump: schema.Dump):
+        return f"viewser_{self.strftime(dump.timestamp)}_{dump.title}.json"
 
+    def _path(self, dump: schema.Dump):
+        return os.path.join(self._directory, self._name(dump))
 
 class StreamHandler(ErrorDumpIO):
     """
@@ -55,6 +53,7 @@ class StreamHandler(ErrorDumpIO):
 
     Reports back errors to the user via a stream (default sys.stdout).
     """
+
     def __init__(self, stream: TextIO = sys.stdout):
         self._stream: TextIO                 = stream
 

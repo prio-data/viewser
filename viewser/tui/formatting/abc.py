@@ -1,12 +1,11 @@
 from contextlib import contextmanager
 import re
-from typing import Optional, List, Generic,  TypeVar
+from typing import Optional, List, Generic, TypeVar, Callable
 from abc import ABC, abstractmethod
 import click
 import colorama
 
 T = TypeVar("T")
-U = TypeVar("U")
 
 class Section(ABC, Generic[T]):
     TITLE: str = ""
@@ -29,10 +28,11 @@ class Formatter(click.HelpFormatter, ABC, Generic[T]):
 
     @property
     @abstractmethod
-    def SECTIONS(self)-> List[Section[T]]:
+    def SECTIONS(self)-> List[Callable[[], Section[T]]]:
         pass
 
     def __init__(self):
+        self.SECTIONS = [s() for s in self.SECTIONS]
         colorama.init()
         super().__init__()
 

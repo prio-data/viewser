@@ -8,6 +8,12 @@ import requests
 from views_schema import viewser as schema
 
 def response_as_json(response: requests.Response):
+    """
+    response_as_json
+    ================
+
+    Return a response in json form, used for dumping response contents.
+    """
     try:
         content = response.content.decode()
     except UnicodeDecodeError:

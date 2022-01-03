@@ -1,4 +1,5 @@
 
+import tabulate
 from views_schema import queryset_manager as schema
 from viewser import queryset_list
 from . import abc
@@ -6,11 +7,11 @@ from . import abc
 class QuerysetListTable(abc.Section[queryset_list.QuerysetList]):
     TITLE = "Querysets"
     def compile_output(self, model: queryset_list.QuerysetList) -> str:
-        return "\n".join(model.querysets)
+        return tabulate.tabulate([(m,) for m in model.querysets], ("name",), tablefmt = "pipe")
 
 class QuerysetTableFormatter(abc.Formatter[queryset_list.QuerysetList]):
     SECTIONS = [
-            QuerysetListTable(),
+            QuerysetListTable,
         ]
 
 class QuerysetName(abc.Section[schema.DetailQueryset]):
@@ -31,8 +32,8 @@ class QuerysetSummary(abc.Section[schema.DetailQueryset]):
 
 class QuerysetDetailFormatter(abc.Formatter[schema.DetailQueryset]):
     SECTIONS = [
-            QuerysetName(),
-            QuerysetDescription(),
-            QuerysetSummary(),
+            QuerysetName,
+            QuerysetDescription,
+            QuerysetSummary,
         ]
 
