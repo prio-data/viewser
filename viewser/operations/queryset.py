@@ -33,7 +33,7 @@ class QuerysetOperations():
         self._error_handler = error_handler if error_handler else error_handling.ErrorDumper([])
         self._remote_url = remote_url
 
-    def fetch(self, queryset_name:str, out_file: BufferedWriter, start_date: Optional[date] = None, end_date: Optional[date] = None) -> None:
+    def fetch(self, queryset_name:str, out_file: Optional[BufferedWriter] = None, start_date: Optional[date] = None, end_date: Optional[date] = None) -> None:
         """
         fetch
         =====
@@ -46,13 +46,15 @@ class QuerysetOperations():
             None: Always returns none. Errors are handled and reported internally if they occur.
 
         """
-        return (self._fetch(
-                    settings.config_get("RETRIES"),
-                    REMOTE_URL,
-                    queryset_name,
-                    start_date, end_date)
-                    .then(curry(do,lambda data: data.to_parquet(out_file)))
-                    .either(self._error_handler.dump, Just))
+        f = self._fetch(
+                settings.config_get("RETRIES"),
+                REMOTE_URL,
+                queryset_name,
+                start_date, end_date)
+        if out_file is not None:
+            f.then(curry(do, lambda data: data.to_parquet(out_file)))
+
+        return f.either(self._error_handler.dump, Just)
 
     def list(self) -> Maybe[queryset_list.QuerysetList]:
         """
@@ -153,7 +155,7 @@ class QuerysetOperations():
         anim    = animations.LineAnimation()
         data    = Right(None)
 
-        while (data.is_right and data.value is None):
+        while (data.is_right() and data.value is None):
             if retries > 0:
                 time.sleep(1)
 
@@ -170,3 +172,21 @@ class QuerysetOperations():
         anim.end()
 
         return data
+
+def fetch(queryset_name: str, start_date: Optional[date] = None, end_date: Optional[date] = None) -> pd.DataFrame:
+    """
+    fetch
+    =====
+
+    parameters:
+        queryset_name (str)
+
+    returns:
+        pandas.DataFrame
+
+    Fetch a queryset
+    """
+    return QuerysetOperations(
+            settings.REMOTE_URL,
+            error_handling.ErrorDumper([error_handling.StreamHandler()])
+            ).fetch(queryset_name).maybe(None, lambda x:x)

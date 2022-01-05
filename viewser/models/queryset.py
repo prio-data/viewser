@@ -127,4 +127,4 @@ class Queryset(schema.Queryset):
 
     def fetch(self, *args, **kwargs):
         logger.info(f"Fetching queryset {self.name}")
-        return operations.fetch(self.name, *args, **kwargs)
+        return operations.fetch(self.name, *args, **kwargs).maybe(None, lambda x:x)

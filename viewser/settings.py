@@ -175,3 +175,4 @@ REMOTE_PATHS = {
 ERROR_DUMP_DIRECTORY = os.path.join(CONFIG_DIR, config_get("ERROR_DUMP_DIRECTORY"))
 
 QUERYSET_URL = os.path.join(config_get("REMOTE_URL"), "querysets")
+REMOTE_URL = config_get("REMOTE_URL")

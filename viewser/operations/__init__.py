@@ -1,0 +1,1 @@
+from .queryset import fetch
