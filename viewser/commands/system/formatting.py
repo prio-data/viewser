@@ -2,12 +2,12 @@
 import tabulate
 from views_schema import viewser as schema
 from viewser.tui.formatting import abc
-from viewser.models import system as system_models
+from . import models
 
-class ErrorDumpFilesTable(abc.Section[system_models.ErrorDumpFiles]):
+class ErrorDumpFilesTable(abc.Section[models.ErrorDumpFiles]):
     TITLE = "Error dumps"
 
-    def compile_output(self, model: system_models.ErrorDumpFiles):
+    def compile_output(self, model: models.ErrorDumpFiles):
         return tabulate.tabulate(
                 [(i+1, f.name, str(f.size)+" bytes") for i, f in enumerate(model.files)],
                 headers = ("filename", "size"),
@@ -32,7 +32,7 @@ class MessagesSummary(abc.Section[schema.Dump]):
                 msg += f"\n{message.content}"
         return msg
 
-class DumpFileListFormatter(abc.Formatter[system_models.ErrorDumpFiles]):
+class DumpFileListFormatter(abc.Formatter[models.ErrorDumpFiles]):
     SECTIONS = [
             ErrorDumpFilesTable
         ]

@@ -5,7 +5,8 @@ from typing import Optional, Dict, Any
 import tabulate
 from views_schema import docs as schema
 
-from . import wrapped_views_doc, styles, abc
+from viewser.tui.formatting import abc, styles
+from . import wrapped_views_doc
 
 logger = logging.getLogger(__name__)
 

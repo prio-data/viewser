@@ -1,2 +1,2 @@
 
-from .models.queryset import Queryset, Column
+from .commands.queryset import Queryset, Column, fetch

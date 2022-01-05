@@ -1,13 +1,12 @@
+from typing import List
 from copy import deepcopy
 import logging
 import pydantic
 from views_schema import queryset_manager as schema
-from viewser.operations import queryset as queryset_operations
 from viewser import settings
+from . import operations
 
 logger = logging.getLogger(__name__)
-
-operations = queryset_operations.QuerysetOperations(settings.QUERYSET_URL)
 
 def deepcopy_self(fn):
     def inner(self, *args,**kwargs):
@@ -103,6 +102,7 @@ class Column():
 class Queryset(schema.Queryset):
 
     def __init__(self, name, at):
+        self.queryset_operations = operations.QuerysetOperations(settings.QUERYSET_URL)
         super().__init__(name = name, loa = at, operations = [])
 
     @deepcopy_self
@@ -122,9 +122,11 @@ class Queryset(schema.Queryset):
 
     def publish(self, *args, **kwargs):
         logger.info(f"Publishing queryset {self.name}")
-        operations.publish(self, *args, **kwargs)
+        self.queryset_operations.publish(self, *args, **kwargs)
         return self
 
     def fetch(self, *args, **kwargs):
         logger.info(f"Fetching queryset {self.name}")
-        return operations.fetch(self.name, *args, **kwargs).maybe(None, lambda x:x)
+        return self.queryset_operations.fetch(self.name, *args, **kwargs).maybe(None, lambda x:x)
+
+

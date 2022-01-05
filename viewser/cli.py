@@ -10,9 +10,10 @@ from importlib.metadata import version
 import logging
 import click
 
-from . import commands, hirearchical_dict, error_handling
+from . import hirearchical_dict
 from .tui.formatting import json_formatter
 from .tui.formatting import errors as error_formatting
+from .commands import queryset, config, documentation, help, notebooks, system
 
 logger = logging.getLogger(__name__)
 
@@ -38,11 +39,10 @@ def viewser(ctx: click.Context, debug: bool, json: bool):
 
     ctx.obj["error_dumper"] = error_formatting.ErrorFormatter()
 
-viewser.add_command(commands.tables)
-viewser.add_command(commands.transforms)
-viewser.add_command(commands.queryset)
-viewser.add_command(commands.config)
-viewser.add_command(commands.help)
-viewser.add_command(commands.logs)
-viewser.add_command(commands.notebooks)
-viewser.add_command(commands.system)
+viewser.add_command(queryset.cli)
+viewser.add_command(config.cli)
+viewser.add_command(documentation.tables_cli)
+viewser.add_command(documentation.transforms_cli)
+viewser.add_command(notebooks.cli)
+viewser.add_command(system.cli)
+viewser.add_command(help.cli)

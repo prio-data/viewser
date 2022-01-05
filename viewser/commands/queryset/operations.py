@@ -4,10 +4,11 @@ queryset_operations
 
 """
 import time
-from typing import Optional
+from typing import Optional, List
 from io import BytesIO, BufferedWriter
 from datetime import date
 import logging
+import pydantic
 import pandas as pd
 import requests
 from toolz.functoolz import do, curry
@@ -18,7 +19,8 @@ from views_schema import queryset_manager as queryset_schema
 from viewser import settings, remotes
 from viewser.error_handling import errors, error_handling
 from viewser.tui import animations
-from viewser import queryset_list
+
+from . import queryset_list
 
 logger = logging.getLogger(__name__)
 

@@ -1,8 +1,8 @@
 
 import tabulate
 from views_schema import queryset_manager as schema
-from viewser import queryset_list
-from . import abc
+from viewser.tui.formatting import abc
+from . import queryset_list
 
 class QuerysetListTable(abc.Section[queryset_list.QuerysetList]):
     TITLE = "Querysets"

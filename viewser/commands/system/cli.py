@@ -3,23 +3,23 @@ import os
 import json
 import click
 from views_schema import viewser as schema
-from viewser.tui.formatting import system as system_formatting
-from viewser.models import system as system_models
 from viewser import settings
+from . import formatting
+from . import models
 
 @click.group(name = "system", short_help = "administration commands")
-def system():
+def cli():
     """
     Admin commands.
     """
 
-@system.group(name = "error", short_help = "commands related to error dumps")
+@cli.group(name = "error", short_help = "commands related to error dumps")
 @click.pass_context
 def error(ctx: click.Context):
     """
     Commands related to error dumps.
     """
-    ctx.obj["errors"] = system_models.ErrorDumpFiles.from_dir(settings.ERROR_DUMP_DIRECTORY)
+    ctx.obj["errors"] = models.ErrorDumpFiles.from_dir(settings.ERROR_DUMP_DIRECTORY)
 
 @error.command(name = "list", short_help = "show current error dumps")
 @click.pass_context
@@ -27,7 +27,7 @@ def list_errors(ctx: click.Context):
     """
     Show a list of current error dumps.
     """
-    click.echo(system_formatting.DumpFileListFormatter().formatted(
+    click.echo(formatting.DumpFileListFormatter().formatted(
             ctx.obj["errors"]))
 
 @error.command(name = "clear", short_help = "delete all current error dumps")
@@ -51,4 +51,4 @@ def show_error(ctx: click.Context, number: int):
     else:
         with open(os.path.join(ctx.obj["errors"].directory,err.name)) as f:
             error_model = schema.Dump(**json.load(f))
-        click.echo(system_formatting.DumpFileErrorFormatter().formatted(error_model))
+        click.echo(formatting.DumpFileErrorFormatter().formatted(error_model))

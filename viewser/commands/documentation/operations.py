@@ -1,8 +1,8 @@
 
 from views_schema import docs as schema
-from viewser.operations.crud import CrudOperations
+from viewser import crud_operations
 
-class DocumentationCrudOperations(CrudOperations[
+class DocumentationCrudOperations(crud_operations.CrudOperations[
     schema.PostedDocumentationPage,
     schema.ViewsDoc,
     schema.ViewsDoc]):
