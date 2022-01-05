@@ -1,7 +1,7 @@
 
 from unittest import TestCase
 from views_schema import ViewsDoc,DocumentationEntry
-from viewser.tui.formatting.documentation import DocumentationDetailFormatter
+from viewser.commands.documentation.formatting import DocumentationDetailFormatter
 
 class TestDocumentationFormatter(TestCase):
     def test_basic_formatting(self):

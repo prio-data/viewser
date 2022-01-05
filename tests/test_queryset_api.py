@@ -1,6 +1,6 @@
 
 from unittest import TestCase
-from viewser.models.queryset import Queryset, Column
+from viewser.commands.queryset.models import Queryset, Column
 
 class TestQuerysetApi(TestCase):
     def test_api(self):
