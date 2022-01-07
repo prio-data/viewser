@@ -22,15 +22,20 @@ REQUIRED_SETTINGS = (
         )
 
 DEFAULT_SETTINGS = {
-        "RETRY_FREQUENCY": 5, # seconds
-        "RETRIES": 80,
-        "LOG_LEVEL": "INFO",
-        "HANDSHAKE_PATH": "",
-        "REPO_URL": "https://www.github.com/prio-data/viewser",
-        "LATEST_KNOWN_VERSION": "0.0.0",
+        "RETRY_FREQUENCY":                  5, # seconds
+        "RETRIES":                          80,
+        "LOG_LEVEL":                        "INFO",
+        "HANDSHAKE_PATH":                   "",
+        "REPO_URL":                         "https://www.github.com/prio-data/viewser",
+        "LATEST_KNOWN_VERSION":             "0.0.0",
         "NOTEBOOK_SERVER_IMAGE_REPOSITORY": "prio-data/viewserspace",
-        "NOTEBOOK_SERVER_IMAGE_REGISTRY": "viewsregistry.azurecr.io",
-        "ERROR_DUMP_DIRECTORY": "dumps",
+        "NOTEBOOK_SERVER_IMAGE_REGISTRY":   "viewsregistry.azurecr.io",
+        "ERROR_DUMP_DIRECTORY":             "dumps",
+        "MODEL_OBJECT_SFTP_USER":           "model_storage",
+        "MODEL_OBJECT_SFTP_PORT":           22222,
+        "MODEL_OBJECT_SFTP_HOSTNAME":       "hermes",
+        "MODEL_OBJECT_KEY_DB_HOSTNAME":     "janus",
+        "MODEL_OBJECT_KEY_DB_DBNAME":       "pred3_certs",
     }
 
 CONFIG_DIR = os.path.expanduser("~/.views")

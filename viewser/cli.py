@@ -13,7 +13,7 @@ import click
 from . import hirearchical_dict
 from .tui.formatting import json_formatter
 from .tui.formatting import errors as error_formatting
-from .commands import queryset, config, documentation, help, notebooks, system
+from .commands import queryset, config, documentation, help, notebooks, system, model
 
 logger = logging.getLogger(__name__)
 
@@ -46,3 +46,4 @@ viewser.add_command(documentation.transforms_cli)
 viewser.add_command(notebooks.cli)
 viewser.add_command(system.cli)
 viewser.add_command(help.cli)
+viewser.add_command(model.cli)
