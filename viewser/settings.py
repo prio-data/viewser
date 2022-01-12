@@ -31,7 +31,7 @@ DEFAULT_SETTINGS = {
         "NOTEBOOK_SERVER_IMAGE_REPOSITORY": "prio-data/viewserspace",
         "NOTEBOOK_SERVER_IMAGE_REGISTRY":   "viewsregistry.azurecr.io",
         "ERROR_DUMP_DIRECTORY":             "dumps",
-        "MODEL_OBJECT_SFTP_USER":           "model_storage",
+        "MODEL_OBJECT_SFTP_USER":           "predictions",
         "MODEL_OBJECT_SFTP_PORT":           22222,
         "MODEL_OBJECT_SFTP_HOSTNAME":       "hermes",
         "MODEL_OBJECT_KEY_DB_HOSTNAME":     "janus",
