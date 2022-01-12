@@ -11,6 +11,8 @@ import fitin
 
 from toolz.functoolz import compose,curry
 
+from viewser import error_handling
+
 class IRemotePaths(Enum):
     querysets = 1
     documentation = 2
@@ -181,3 +183,8 @@ ERROR_DUMP_DIRECTORY = os.path.join(CONFIG_DIR, config_get("ERROR_DUMP_DIRECTORY
 
 QUERYSET_URL = os.path.join(config_get("REMOTE_URL"), "querysets")
 REMOTE_URL = config_get("REMOTE_URL")
+
+def default_error_handler():
+    return error_handling.ErrorDumper([
+        error_handling.FileErrorHandler(ERROR_DUMP_DIRECTORY),
+        error_handling.StreamHandler()])

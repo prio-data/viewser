@@ -4,11 +4,10 @@ queryset_operations
 
 """
 import time
-from typing import Optional, List
+from typing import Optional
 from io import BytesIO, BufferedWriter
 from datetime import date
 import logging
-import pydantic
 from pyarrow.lib import ArrowInvalid
 import pandas as pd
 import requests
@@ -36,7 +35,7 @@ class QuerysetOperations():
         self._error_handler = error_handler if error_handler else error_handling.ErrorDumper([])
         self._remote_url = remote_url
 
-    def fetch(self, queryset_name:str, out_file: Optional[BufferedWriter] = None, start_date: Optional[date] = None, end_date: Optional[date] = None) -> None:
+    def fetch(self, queryset_name:str, out_file: Optional[BufferedWriter] = None, start_date: Optional[date] = None, end_date: Optional[date] = None) -> Maybe[pd.DataFrame]:
         """
         fetch
         =====
@@ -46,7 +45,7 @@ class QuerysetOperations():
             out_file (BufferedWriter): File to write queryset to
 
         returns:
-            None: Always returns none. Errors are handled and reported internally if they occur.
+            Maybe[pandas.DataFrame]: Dataframe corresponding to queryset (if query succeeds)
 
         """
         f = self._fetch(
@@ -83,6 +82,7 @@ class QuerysetOperations():
 
         returns:
             Optional[viewser_schema.queryset_manager.DetailQueryset]: Returns queryset model if successful.
+
         """
         return (self._request("GET", remotes.status_checks, f"querysets/{name}")
             .then(lambda r: r.json())
@@ -176,7 +176,7 @@ class QuerysetOperations():
 
         return data
 
-def fetch(queryset_name: str, start_date: Optional[date] = None, end_date: Optional[date] = None) -> pd.DataFrame:
+def fetch(queryset_name: str, start_date: Optional[date] = None, end_date: Optional[date] = None) -> Optional[pd.DataFrame]:
     """
     fetch
     =====
@@ -188,8 +188,9 @@ def fetch(queryset_name: str, start_date: Optional[date] = None, end_date: Optio
         pandas.DataFrame
 
     Fetch a queryset
+
     """
     return QuerysetOperations(
             settings.REMOTE_URL,
-            error_handling.ErrorDumper([error_handling.StreamHandler()])
+            settings.default_error_handler()
             ).fetch(queryset_name).maybe(None, lambda x:x)

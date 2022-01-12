@@ -1,4 +1,5 @@
 
+import logging
 from typing import Callable
 import base64
 import json
@@ -6,6 +7,8 @@ import datetime
 import pydantic
 import requests
 from views_schema import viewser as schema
+
+logger = logging.getLogger(__name__)
 
 def response_as_json(response: requests.Response):
     """
@@ -35,8 +38,11 @@ def try_to_propagate(function: Callable[[requests.Response], schema.Dump])-> Cal
     """
     def inner(response: requests.Response) -> schema.Dump:
         try:
-            return schema.Dump(response.json())
+            error = schema.Dump(response.json())
+            logger.debug("Propagating error from remote")
+            return error 
         except (json.JSONDecodeError, pydantic.ValidationError):
+            logger.debug(f"Failed to propagate error from response: \"{response.content[:25]}...\"")
             return function(response)
     return inner
 
@@ -122,7 +128,10 @@ def client_error(response: requests.Response):
                         content = ("These messages might be caused by using an "
                         "old version of viewser that is not supported by the "
                         "currently running server version. Try updating viewser "
-                        "with pip install --upgrade viewser.")),
+                        "with pip install --upgrade viewser. "
+                        "It might also be caused by misspelling a column name, "
+                        "a table name, or a transform name."
+                        )),
                 ])
 
 def url_parsing_error(url: str):
