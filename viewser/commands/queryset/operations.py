@@ -9,6 +9,7 @@ from io import BytesIO, BufferedWriter
 from datetime import date
 import logging
 import pydantic
+from pyarrow import ArrowInvalid
 import pandas as pd
 import requests
 from toolz.functoolz import do, curry
@@ -114,7 +115,7 @@ class QuerysetOperations():
         else:
             try:
                 return Right(pd.read_parquet(BytesIO(response.content)))
-            except OSError:
+            except (OSError, ArrowInvalid):
                 return Left(errors.deserialization_error(response))
 
     def _fetch(
