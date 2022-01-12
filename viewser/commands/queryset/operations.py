@@ -9,7 +9,7 @@ from io import BytesIO, BufferedWriter
 from datetime import date
 import logging
 import pydantic
-from pyarrow import ArrowInvalid
+from pyarrow.lib import ArrowInvalid
 import pandas as pd
 import requests
 from toolz.functoolz import do, curry
