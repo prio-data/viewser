@@ -12,7 +12,9 @@ from . import operations, formatting
 def cli(ctx_obj: Dict[str, Any]):
     ctx_obj["operations"] = operations.QuerysetOperations(
             settings.QUERYSET_URL,
-            settings.default_error_handler())
+            settings.default_error_handler(),
+            settings.QUERYSET_MAX_RETRIES,
+            )
     ctx_obj["table_formatter"] = formatting.QuerysetTableFormatter()
     ctx_obj["detail_formatter"] = formatting.QuerysetDetailFormatter()
 

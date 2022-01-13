@@ -3,6 +3,7 @@ queryset_operations
 ===================
 
 """
+import sys
 import time
 from typing import Optional
 from io import BytesIO, BufferedWriter
@@ -16,7 +17,7 @@ from pymonad.either import Either, Left, Right
 from pymonad.maybe import Just, Nothing, Maybe
 from views_schema import viewser as viewser_schema
 from views_schema import queryset_manager as queryset_schema
-from viewser import settings, remotes
+from viewser import remotes
 from viewser.error_handling import errors, error_handling
 from viewser.tui import animations
 
@@ -24,16 +25,17 @@ from . import queryset_list
 
 logger = logging.getLogger(__name__)
 
-REMOTE_URL = settings.config_get("REMOTE_URL")
-REPO_URL = settings.config_get("REPO_URL")
-
 response_json = lambda rsp: rsp.json()
 
 class QuerysetOperations():
 
-    def __init__(self, remote_url: str, error_handler: Optional[error_handling.ErrorDumper] = None):
-        self._error_handler = error_handler if error_handler else error_handling.ErrorDumper([])
+    def __init__(self,
+            remote_url: str,
+            error_handler: Optional[error_handling.ErrorDumper] = None,
+            max_retries: int = sys.maxsize):
         self._remote_url = remote_url
+        self._max_retries = max_retries
+        self._error_handler = error_handler if error_handler else error_handling.ErrorDumper([])
 
     def fetch(self, queryset_name:str, out_file: Optional[BufferedWriter] = None, start_date: Optional[date] = None, end_date: Optional[date] = None) -> Maybe[pd.DataFrame]:
         """
@@ -49,8 +51,8 @@ class QuerysetOperations():
 
         """
         f = self._fetch(
-                settings.config_get("RETRIES"),
-                REMOTE_URL,
+                self._max_retries,
+                self._remote_url,
                 queryset_name,
                 start_date, end_date)
         if out_file is not None:
@@ -152,7 +154,7 @@ class QuerysetOperations():
                 k:v for k,v in {"start_date":start_date, "end_date":end_date}.items() if v is not None
                 }
         parameters = Just(parameters) if len(parameters) > 0 else Nothing
-        path = f"querysets/data/{name}"
+        path = f"data/{name}"
 
         retries = 0
         anim    = animations.LineAnimation()
