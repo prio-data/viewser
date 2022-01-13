@@ -2,6 +2,7 @@
 import os
 
 CONFIG_DIR = os.path.abspath(os.path.expanduser("~/.views"))
+CONFIG_DB_FILE = os.path.join(CONFIG_DIR, "settings.sqlite")
 
 DEFAULT_SETTINGS = {
         "RETRY_FREQUENCY":                  5,
@@ -20,3 +21,7 @@ DEFAULT_SETTINGS = {
         "QUERYSET_MAX_RETRIES":             500,
         "QUERYSET_REMOTE_PATH":             "querysets",
     }
+
+REQUIRED_SETTINGS = (
+            "REMOTE_URL",
+        )
