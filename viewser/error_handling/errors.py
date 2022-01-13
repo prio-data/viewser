@@ -38,7 +38,7 @@ def try_to_propagate(function: Callable[[requests.Response], schema.Dump])-> Cal
     """
     def inner(response: requests.Response) -> schema.Dump:
         try:
-            error = schema.Dump(response.json())
+            error = schema.Dump(**response.json())
             logger.debug("Propagating error from remote")
             return error 
         except (json.JSONDecodeError, pydantic.ValidationError):
