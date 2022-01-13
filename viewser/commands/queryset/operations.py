@@ -175,22 +175,3 @@ class QuerysetOperations():
         anim.end()
 
         return data
-
-def fetch(queryset_name: str, start_date: Optional[date] = None, end_date: Optional[date] = None) -> Optional[pd.DataFrame]:
-    """
-    fetch
-    =====
-
-    parameters:
-        queryset_name (str)
-
-    returns:
-        pandas.DataFrame
-
-    Fetch a queryset
-
-    """
-    return QuerysetOperations(
-            settings.REMOTE_URL,
-            settings.default_error_handler()
-            ).fetch(queryset_name).maybe(None, lambda x:x)

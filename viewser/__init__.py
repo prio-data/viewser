@@ -1,2 +1,3 @@
 
-from .commands.queryset import Queryset, Column, fetch
+from .commands.queryset import Queryset, Column
+from .operations import fetch
