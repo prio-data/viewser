@@ -32,6 +32,7 @@ def make_request(
     Returns:
         Either[schema.Dump, Response]
     """
+    logger.debug(f"Making {method} request to {url}")
     request_args = [method, url]
     request_kwargs: Dict[str, Any] = {"headers":{}}
 

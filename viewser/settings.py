@@ -1,5 +1,4 @@
 
-from enum import Enum
 from typing import Callable, List
 import os
 import functools
@@ -11,9 +10,7 @@ import fitin
 
 from toolz.functoolz import compose,curry
 
-class IRemotePaths(Enum):
-    querysets = 1
-    documentation = 2
+from viewser import error_handling
 
 logger = logging.getLogger(__name__)
 
@@ -36,6 +33,7 @@ DEFAULT_SETTINGS = {
         "MODEL_OBJECT_SFTP_HOSTNAME":       "hermes",
         "MODEL_OBJECT_KEY_DB_HOSTNAME":     "janus",
         "MODEL_OBJECT_KEY_DB_DBNAME":       "pred3_certs",
+        "QUERYSET_MAX_RETRIES":             500,
     }
 
 CONFIG_DIR = os.path.expanduser("~/.views")
@@ -172,12 +170,20 @@ def configure_interactively():
                 setting, value
             )
 
-REMOTE_PATHS = {
-        IRemotePaths.querysets: "querysets",
-        IRemotePaths.documentation: "docs",
-    }
+# = LOCAL PATHS ======================================================
 
 ERROR_DUMP_DIRECTORY = os.path.join(CONFIG_DIR, config_get("ERROR_DUMP_DIRECTORY"))
 
-QUERYSET_URL = os.path.join(config_get("REMOTE_URL"), "querysets")
-REMOTE_URL = config_get("REMOTE_URL")
+# = API paths ========================================================
+
+REMOTE_URL   = config_get("REMOTE_URL")
+QUERYSET_URL = os.path.join(REMOTE_URL, "querysets")
+
+# = REQUEST PARAMETERS ===============================================
+
+QUERYSET_MAX_RETRIES = config_get("QUERYSET_MAX_RETRIES")
+
+def default_error_handler():
+    return error_handling.ErrorDumper([
+        error_handling.FileErrorHandler(ERROR_DUMP_DIRECTORY),
+        error_handling.StreamHandler()])
