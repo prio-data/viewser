@@ -12,9 +12,7 @@ config_get = config.get
 REMOTE_URL = config.get("REMOTE_URL") or "http://0.0.0.0:4000"
 QUERYSET_URL = os.path.join(REMOTE_URL, "querysets")
 
-# =Directories============================================
-
-ERROR_DUMP_DIRECTORY = os.path.join(static.CONFIG_DIR, config.get("ERROR_DUMP_DIRECTORY"))
+QUERYSET_MAX_RETRIES = config.get("QUERYSET_MAX_RETRIES")
 
 # =Compatibility==========================================
 

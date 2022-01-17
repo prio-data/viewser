@@ -12,7 +12,7 @@ DEFAULT_SETTINGS = {
         "LATEST_KNOWN_VERSION":             "0.0.0",
         "NOTEBOOK_SERVER_IMAGE_REPOSITORY": "prio-data/viewserspace",
         "NOTEBOOK_SERVER_IMAGE_REGISTRY":   "viewsregistry.azurecr.io",
-        "ERROR_DUMP_DIRECTORY":             "dumps",
+        "ERROR_DUMP_DIRECTORY":             os.path.join(CONFIG_DIR, "dumps"),
         "MODEL_OBJECT_SFTP_USER":           "predictions",
         "MODEL_OBJECT_SFTP_PORT":           22222,
         "MODEL_OBJECT_SFTP_HOSTNAME":       "hermes",

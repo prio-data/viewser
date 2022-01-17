@@ -4,10 +4,8 @@ import io
 from typing import Optional, Dict, Any
 
 import click
-#from .operations import queryset as queryset_operations
-#from viewser.tui.formatting import queryset as queryset_formatting
-from viewser.error_handling import error_handling
 from viewser import settings
+from viewser.settings import defaults
 from . import operations, formatting
 
 @click.group(name="queryset", short_help="queryset_operations related to querysets")
@@ -15,9 +13,9 @@ from . import operations, formatting
 def cli(ctx_obj: Dict[str, Any]):
     ctx_obj["operations"] = operations.QuerysetOperations(
             settings.QUERYSET_URL,
-            error_handling.ErrorDumper([
-                    error_handling.FileErrorHandler(settings.ERROR_DUMP_DIRECTORY),
-                    error_handling.StreamHandler()]))
+            defaults.default_error_handler(),
+            settings.QUERYSET_MAX_RETRIES,
+            )
     ctx_obj["table_formatter"] = formatting.QuerysetTableFormatter()
     ctx_obj["detail_formatter"] = formatting.QuerysetDetailFormatter()
 

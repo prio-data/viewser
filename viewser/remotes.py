@@ -32,6 +32,7 @@ def make_request(
     Returns:
         Either[schema.Dump, Response]
     """
+    logger.debug(f"Making {method} request to {url}")
     request_args = [method, url]
     request_kwargs: Dict[str, Any] = {"headers":{}}
 
@@ -184,6 +185,9 @@ def request(
     Returns:
         Either[schema.Dump, Response]
     """
+
+    data.then(str).then(lambda r: f"POSTing {r}").then(logger.debug)
+
     url = make_url(base_url, path, parameters)
     response = url.then(curry(make_request, method = method, json_data = data))
     return compose_checks(checks)(response)

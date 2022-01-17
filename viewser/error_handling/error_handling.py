@@ -69,7 +69,9 @@ class StreamHandler(ErrorDumpIO):
         self._stream.write(self._formatter.formatted(dump))
 
 class ErrorDumper():
-    def __init__(self, writers: List[ErrorDumpIO]):
+    def __init__(self, writers: List[ErrorDumpIO] = None):
+        if writers is None:
+            writers = [StreamHandler()]
         self._writers = writers
 
     def dump(self, error_dump: schema.Dump) -> Nothing:
