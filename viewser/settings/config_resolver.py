@@ -1,4 +1,4 @@
-from typing import Callable, Dict, Union
+from typing import Callable, Dict, Union, Any, Optional
 import strconv
 from sqlalchemy.orm import Session
 from . import models, exceptions
@@ -8,12 +8,14 @@ class ConfigResolver():
     def __init__(self, sessionmaker: Callable[[], Session]):
         self._Session = sessionmaker
 
-    def get(self, key: str) -> Union[str, int, float]:
+    def get(self, key: str, default: Optional[Any] = None) -> Union[str, int, float]:
         with self._Session() as session:
             try:
                 assert (setting := self._get(session, key)) is not None
             except AssertionError:
-                raise exceptions.ConfigurationError(f"Configuration setting {key} is not set")
+                if default is None:
+                    raise exceptions.ConfigurationError(f"Configuration setting {key} is not set")
+                return default
             else:
                 return strconv.convert(setting.value)
 

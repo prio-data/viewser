@@ -9,10 +9,12 @@ config_get = config.get
 
 # =Remotes================================================
 
-REMOTE_URL = config.get("REMOTE_URL") or "http://0.0.0.0:4000"
+REMOTE_URL = config.get("REMOTE_URL")
 QUERYSET_URL = os.path.join(REMOTE_URL, "querysets")
 
 QUERYSET_MAX_RETRIES = config.get("QUERYSET_MAX_RETRIES")
+
+FOO = config.get("bar", "baz")
 
 # =Compatibility==========================================
 

@@ -20,6 +20,7 @@ DEFAULT_SETTINGS = {
         "MODEL_OBJECT_KEY_DB_DBNAME":       "pred3_certs",
         "QUERYSET_MAX_RETRIES":             500,
         "QUERYSET_REMOTE_PATH":             "querysets",
+        "REMOTE_URL":                       "http://0.0.0.0:4000"
     }
 
 REQUIRED_SETTINGS = (
