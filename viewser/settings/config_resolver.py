@@ -13,7 +13,7 @@ class ConfigResolver():
             try:
                 assert (setting := self._get(session, key)) is not None
             except AssertionError:
-                raise ConfigurationError(f"Configuration setting {key} is not set")
+                raise exceptions.ConfigurationError(f"Configuration setting {key} is not set")
             else:
                 return strconv.convert(setting.value)
 
@@ -43,7 +43,7 @@ class ConfigResolver():
         return session.query(models.Setting).get(key) is not None
 
     def _set(self, session: Session, key: str, value: Union[str, int, float]) -> None:
-        if ((existing := self._get(session,key)) is not None):
+        if (existing := self._get(session,key)) is not None:
             existing.value = value
         else:
             setting = models.Setting(key = key, value = value)

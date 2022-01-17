@@ -1,4 +1,5 @@
 import sys
+import io
 import click
 import json
 import tabulate
@@ -82,3 +83,9 @@ def config_unset(name: str):
 @cli.command(name = "dump", short_help = "dump current config as JSON")
 def config_dump():
     click.echo(json.dumps(settings.config.list()))
+
+@cli.command(name = "load", short_help = "load configuration from a JSON file")
+@click.confirmation_option(prompt="Load config file? (overwrites current config values)")
+@click.argument("file", type = click.File("r"))
+def config_load(file: io.BufferedReader):
+    settings.config.load(json.load(file), overwrite = True)
