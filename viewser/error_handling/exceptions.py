@@ -125,9 +125,7 @@ class RequestError(PrettyError):
     error_name = "Request error"
 
     def _http_default_hints(self):
-        defaults_filename = pkg_resources.resource_filename("viewser","data/status-codes.json")
-        with open(defaults_filename) as f:
-            return json.load(f)
+        return {}
 
     def http_defaults(self, status_code):
         return defaultdict(str, self._http_default_hints().get(str(status_code)))
