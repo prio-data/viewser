@@ -5,6 +5,7 @@ from typing import Optional, Dict, Any
 
 import click
 from viewser import settings
+from viewser.settings import defaults
 from . import operations, formatting
 
 @click.group(name="queryset", short_help="queryset_operations related to querysets")
@@ -12,7 +13,7 @@ from . import operations, formatting
 def cli(ctx_obj: Dict[str, Any]):
     ctx_obj["operations"] = operations.QuerysetOperations(
             settings.QUERYSET_URL,
-            settings.default_error_handler(),
+            defaults.default_error_handler(),
             settings.QUERYSET_MAX_RETRIES,
             )
     ctx_obj["table_formatter"] = formatting.QuerysetTableFormatter()

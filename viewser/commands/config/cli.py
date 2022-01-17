@@ -1,5 +1,6 @@
 import sys
 import click
+import json
 import tabulate
 from viewser import settings
 
@@ -27,7 +28,7 @@ def config_set(name: str, value: str, override: bool): # pylint: disable=redefin
     """
     overrides = True
     try:
-        settings.config_get(name)
+        settings.config.get(name)
     except KeyError:
         overrides = False
 
@@ -35,7 +36,7 @@ def config_set(name: str, value: str, override: bool): # pylint: disable=redefin
         click.echo(f"Setting {name} already set, override not specified (see --help)")
         return
 
-    settings.config_set_in_file(name,value)
+    settings.config.set(name,value)
     click.echo(f"{name}: {value}")
 
 @cli.command(name="get", short_help="get a configuration value")
@@ -44,7 +45,7 @@ def config_get(name: str):
     """
     Get a configuration value.
     """
-    value = settings.config_get(name)
+    value = settings.config.get(name)
     if value:
         click.echo(f"{name}: {value}")
     else:
@@ -57,7 +58,7 @@ def config_reset():
     """
     Reset config, writing default values over current values.
     """
-    settings.reset_config_file_defaults()
+    settings.config.load(settings.static.DEFAULT_SETTINGS, overwrite = True)
     click.echo("Config file reset")
 
 @cli.command(name="list", short_help="show all configuration settings")
@@ -65,7 +66,7 @@ def config_list():
     """
     Show all current configuration values
     """
-    click.echo(tabulate.tabulate(settings.config_dict.items()))
+    click.echo(tabulate.tabulate(settings.config.list().items()))
 
 @cli.command(name="unset", short_help="unset a configuration value")
 @click.confirmation_option(prompt="Unset config key?")
@@ -74,6 +75,10 @@ def config_unset(name: str):
     """
     Unset a configuration value, removing its entry from the config file.
     """
-    current_value = settings.config_get(name)
-    settings.config_unset_in_file(name)
+    current_value = settings.config.get(name)
+    settings.config.unset(name)
     click.echo(f"Unset {name} (was {current_value})")
+
+@cli.command(name = "dump", short_help = "dump current config as JSON")
+def config_dump():
+    click.echo(json.dumps(settings.config.list()))
