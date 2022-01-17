@@ -128,7 +128,7 @@ class RequestError(PrettyError):
         return {}
 
     def http_defaults(self, status_code):
-        return defaultdict(str, self._http_default_hints().get(str(status_code)))
+        return defaultdict(str)
 
     def make_message(self):
         return self.content
