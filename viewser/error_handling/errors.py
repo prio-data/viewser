@@ -171,3 +171,13 @@ def deserialization_error(response: requests.Response):
                         content = (response_as_json(response))),
                 ]
             )
+
+def exists_error(resource_name: str):
+    return schema.Dump(
+            title = "Resource exists",
+            timestamp = datetime.datetime.now(),
+            messages = [
+                    schema.Message(
+                            content = f"Resource {resource_name} already exists"
+                        ),
+                ])

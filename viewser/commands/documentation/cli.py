@@ -8,30 +8,33 @@ from . import formatting, operations
 
 @click.group(name = "tables", short_help = "show information about available tables")
 @click.pass_obj
-def tables_cli(ctx_obj: Dict[str, Any]):
+def tables_cli(obj: Dict[str, Any]):
     """
     Commands used to inspect available tables and columns.
     """
-    ctx_obj["operations"]       = operations.DocumentationCrudOperations(settings.config_get("REMOTE_URL"), "tables")
-    ctx_obj["detail_formatter"] = formatting.DocumentationDetailFormatter()
-    ctx_obj["list_formatter"]   = formatting.DocumentationTableFormatter()
+    obj["operations"]       = operations.DocumentationCrudOperations(settings.config_get("REMOTE_URL"), "docs/tables")
+    obj["detail_formatter"] = formatting.DocumentationDetailFormatter()
+    obj["list_formatter"]   = formatting.DocumentationTableFormatter()
 
 @tables_cli.command(name="list", short_help="show available tables")
 @click.pass_obj
-def list_tables(ctx_obj: Dict[str, Any]):
+def list_tables(obj: Dict[str, Any]):
     """
+    list_tables
+    ===========
+
     Show all available tables.
     """
 
-    result = ctx_obj["operations"].list()
-    click.echo(ctx_obj["list_formatter"].formatted(result))
+    click.echo(obj["operations"].list()
+        .either(obj["error_dumper"].formatted, obj["list_formatter"].formatted))
 
 @tables_cli.command(name="show", short_help="inspect table or column")
 @click.argument("table-name")
 @click.argument("column-name", required=False)
 @click.pass_obj
 def show_tables(
-        ctx_obj: Dict[str, Any],
+        obj: Dict[str, Any],
         table_name: str,
         column_name: Optional[str] = None):
     """
@@ -40,14 +43,15 @@ def show_tables(
     name).
     """
     path = table_name
+
     if column_name:
         path += "/"+column_name
-        formatter = ctx_obj["detail_formatter"]
+        formatter = obj["detail_formatter"]
     else:
-        formatter = ctx_obj["list_formatter"]
+        formatter = obj["list_formatter"]
 
-    result = ctx_obj["operations"].show(path)
-    click.echo(formatter.formatted(result))
+    click.echo(obj["operations"].show(path)
+            .either(obj["error_dumper"].formatted, formatter.formatted))
 
 @tables_cli.command(name="annotate", short_help="add documentation text")
 @click.argument("content-file", type=click.File("r"))
@@ -56,7 +60,7 @@ def show_tables(
 @click.option("--overwrite", is_flag = True, help="overwrite existing documentation")
 @click.pass_obj
 def annotate_table(
-        ctx_obj: Dict[str, Any],
+        obj: Dict[str, Any],
         content_file: io.BufferedReader,
         table_name: str,
         column_name: str,
@@ -66,54 +70,52 @@ def annotate_table(
     following the file containing the annotation. To annotate a column, pass
     two arguments.
     """
+
     path = table_name
     if column_name:
         path += "/"+column_name
-        formatter = ctx_obj["detail_formatter"]
+        formatter = obj["detail_formatter"]
     else:
-        formatter = ctx_obj["list_formatter"]
+        formatter = obj["list_formatter"]
 
     to_post = schema.PostedDocumentationPage(content = content_file.read())
 
-    result = ctx_obj["operations"].post(to_post, path, overwrite = overwrite)
-
-    click.echo(formatter.formatted(result))
-
+    click.echo(obj["operations"].post(to_post, path, overwrite = overwrite)
+        .either(obj["error_dumper"].formatted, formatter.formatted))
 
 @click.group(name="transforms")
 @click.pass_obj
-def transforms_cli(ctx_obj: Dict[str, Any]):
+def transforms_cli(obj: Dict[str, Any]):
     """
     Commands used to inspect available transforms.
     """
 
-    ctx_obj["operations"] = operations.DocumentationCrudOperations(
-            settings.config_get("REMOTE_URL"), "transforms")
-    ctx_obj["table_formatter"] = formatting.DocumentationTableFormatter()
-    ctx_obj["detail_formatter"] = formatting.FunctionDetailFormatter()
+    obj["operations"] = operations.DocumentationCrudOperations(settings.config_get("REMOTE_URL"), "docs/transforms")
+    obj["table_formatter"] = formatting.DocumentationTableFormatter()
+    obj["detail_formatter"] = formatting.FunctionDetailFormatter()
 
 @transforms_cli.command(name="list", short_help="show all available transforms")
 @click.pass_obj
-def list_transforms(ctx_obj: Dict[str, Any]):
+def list_transforms(obj: Dict[str, Any]):
     """
     List all available transforms.
     """
 
-    result = ctx_obj["operations"] .list()
-    click.echo(ctx_obj["table_formatter"].formatted(result))
+    click.echo(obj["operations"].list()
+        .either(obj["error_dumper"].formatted, obj["table_formatter"].formatted))
 
 @transforms_cli.command(name="show",short_help="show details about a transform")
 @click.argument("transform-name", type=str)
 @click.pass_obj
 def show_transform(
-        ctx_obj: Dict[str, Any],
+        obj: Dict[str, Any],
         transform_name: str):
     """
     Show details about a transform, such as which arguments it takes, and
     which level of analysis it is applicable to.
     """
-    result = ctx_obj["operations"].show(transform_name)
-    click.echo(ctx_obj["detail_formatter"].formatted(result))
+    click.echo(obj["operations"].show(transform_name)
+        .either(obj["error_dumper"].formatted, obj["detail_formatter"].formatted))
 
 @transforms_cli.command(name="annotate", short_help="add documentation text")
 @click.argument("content-file", type=click.File("r"))
@@ -121,7 +123,7 @@ def show_transform(
 @click.option("--overwrite", is_flag = True, help="overwrite existing documentation")
 @click.pass_obj
 def annotate_transform(
-        ctx_obj: Dict[str, Any],
+        obj: Dict[str, Any],
         content_file: io.BufferedReader,
         transform_name: str,
         overwrite: bool = False):
@@ -131,5 +133,5 @@ def annotate_transform(
     two arguments.
     """
     to_post = schema.PostedDocumentationPage(content = content_file.read())
-    result = ctx_obj["operations"].post(to_post, transform_name, overwrite=overwrite)
-    click.echo(ctx_obj["detail_formatter"].formatted(result))
+    click.echo(obj["operations"].post(to_post, transform_name, overwrite=overwrite)
+        .either(obj["error_dumper"].formatted, obj["detail_formatter"].formatted))
