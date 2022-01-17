@@ -35,7 +35,7 @@ def try_to_propagate(function: Callable[[requests.Response], schema.Dump])-> Cal
     """
     def inner(response: requests.Response) -> schema.Dump:
         try:
-            return schema.Dump(response.json())
+            return schema.Dump(**response.json())
         except (json.JSONDecodeError, pydantic.ValidationError):
             return function(response)
     return inner
@@ -162,3 +162,13 @@ def deserialization_error(response: requests.Response):
                         content = (response_as_json(response))),
                 ]
             )
+
+def exists_error(resource_name: str):
+    return schema.Dump(
+            title = "Resource exists",
+            timestamp = datetime.datetime.now(),
+            messages = [
+                    schema.Message(
+                            content = f"Resource {resource_name} already exists"
+                        ),
+                ])
