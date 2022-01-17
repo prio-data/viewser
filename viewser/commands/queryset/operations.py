@@ -3,12 +3,12 @@ queryset_operations
 ===================
 
 """
+import sys
 import time
-from typing import Optional, List
+from typing import Optional
 from io import BytesIO, BufferedWriter
 from datetime import date
 import logging
-import pydantic
 from pyarrow.lib import ArrowInvalid
 import pandas as pd
 import requests
@@ -17,7 +17,7 @@ from pymonad.either import Either, Left, Right
 from pymonad.maybe import Just, Nothing, Maybe
 from views_schema import viewser as viewser_schema
 from views_schema import queryset_manager as queryset_schema
-from viewser import settings, remotes
+from viewser import remotes
 from viewser.error_handling import errors, error_handling
 from viewser.tui import animations
 
@@ -25,18 +25,19 @@ from . import queryset_list
 
 logger = logging.getLogger(__name__)
 
-REMOTE_URL = settings.config_get("REMOTE_URL")
-REPO_URL = settings.config_get("REPO_URL")
-
 response_json = lambda rsp: rsp.json()
 
 class QuerysetOperations():
 
-    def __init__(self, remote_url: str, error_handler: Optional[error_handling.ErrorDumper] = None):
-        self._error_handler = error_handler if error_handler else error_handling.ErrorDumper([])
+    def __init__(self,
+            remote_url: str,
+            error_handler: Optional[error_handling.ErrorDumper] = None,
+            max_retries: int = sys.maxsize):
         self._remote_url = remote_url
+        self._max_retries = max_retries
+        self._error_handler = error_handler if error_handler else error_handling.ErrorDumper([])
 
-    def fetch(self, queryset_name:str, out_file: Optional[BufferedWriter] = None, start_date: Optional[date] = None, end_date: Optional[date] = None) -> None:
+    def fetch(self, queryset_name:str, out_file: Optional[BufferedWriter] = None, start_date: Optional[date] = None, end_date: Optional[date] = None) -> Maybe[pd.DataFrame]:
         """
         fetch
         =====
@@ -46,12 +47,12 @@ class QuerysetOperations():
             out_file (BufferedWriter): File to write queryset to
 
         returns:
-            None: Always returns none. Errors are handled and reported internally if they occur.
+            Maybe[pandas.DataFrame]: Dataframe corresponding to queryset (if query succeeds)
 
         """
         f = self._fetch(
-                settings.config_get("RETRIES"),
-                REMOTE_URL,
+                self._max_retries,
+                self._remote_url,
                 queryset_name,
                 start_date, end_date)
         if out_file is not None:
@@ -83,6 +84,7 @@ class QuerysetOperations():
 
         returns:
             Optional[viewser_schema.queryset_manager.DetailQueryset]: Returns queryset model if successful.
+
         """
         return (self._request("GET", remotes.status_checks, f"querysets/{name}")
             .then(lambda r: r.json())
@@ -152,7 +154,7 @@ class QuerysetOperations():
                 k:v for k,v in {"start_date":start_date, "end_date":end_date}.items() if v is not None
                 }
         parameters = Just(parameters) if len(parameters) > 0 else Nothing
-        path = f"querysets/data/{name}"
+        path = f"data/{name}"
 
         retries = 0
         anim    = animations.LineAnimation()
@@ -175,21 +177,3 @@ class QuerysetOperations():
         anim.end()
 
         return data
-
-def fetch(queryset_name: str, start_date: Optional[date] = None, end_date: Optional[date] = None) -> pd.DataFrame:
-    """
-    fetch
-    =====
-
-    parameters:
-        queryset_name (str)
-
-    returns:
-        pandas.DataFrame
-
-    Fetch a queryset
-    """
-    return QuerysetOperations(
-            settings.REMOTE_URL,
-            error_handling.ErrorDumper([error_handling.StreamHandler()])
-            ).fetch(queryset_name).maybe(None, lambda x:x)
