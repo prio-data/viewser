@@ -30,7 +30,7 @@ def config_set(name: str, value: str, override: bool): # pylint: disable=redefin
     overrides = True
     try:
         settings.config.get(name)
-    except KeyError:
+    except settings.exceptions.ConfigurationError:
         overrides = False
 
     if not override and overrides:
