@@ -6,7 +6,7 @@ authors = ["peder2911 <pglandsverk@gmail.com>"]
 
 [tool.poetry.dependencies]
 python = "^3.8"
-requests = "^2.25.1"
+requests = "^2.27.1"
 environs = "^9.3.1"
 pandas = "^1.2.3"
 fitin = "^0.2.0"
