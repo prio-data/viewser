@@ -23,7 +23,7 @@ def fetch(queryset_name: str, start_date: Optional[date] = None, end_date: Optio
 
     """
     return operations.QuerysetOperations(
-            settings.REMOTE_URL,
+            settings.QUERYSET_URL,
             defaults.default_error_handler(),
             settings.QUERYSET_MAX_RETRIES,
             ).fetch(queryset_name).maybe(None, lambda x:x)
