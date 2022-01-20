@@ -63,7 +63,7 @@ class FunctionSection(DocumentationSection):
                 type_note
             ))
         except KeyError:
-            logger.warning("Failed to parse returned documentation")
+            #logger.warning("Failed to parse returned documentation")
             return None
 
 class DocumentationTableSection(DocumentationSection):
