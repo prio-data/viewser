@@ -1,12 +1,16 @@
 from typing import Callable, Dict, Union, Any, Optional
 import strconv
 from sqlalchemy.orm import Session
-from . import models, exceptions
+from . import models, exceptions, validation
 
 class ConfigResolver():
 
-    def __init__(self, sessionmaker: Callable[[], Session]):
+    def __init__(self,
+            sessionmaker: Callable[[], Session],
+            validate_key: Callable[[str],str] = validation.validate_key):
+
         self._Session = sessionmaker
+        self._validate_key = validate_key
 
     def get(self, key: str, default: Optional[Any] = None) -> Union[str, int, float]:
         with self._Session() as session:
@@ -39,12 +43,18 @@ class ConfigResolver():
             return {s.key: s.value for s in settings}
 
     def _get(self, session: Session, key: str) -> Union[str, int, float]:
+        key = self._validate_key(key)
+
         return session.query(models.Setting).get(key)
 
     def _exists(self, session: Session, key: str) -> bool:
+        key = self._validate_key(key)
+
         return session.query(models.Setting).get(key) is not None
 
     def _set(self, session: Session, key: str, value: Union[str, int, float]) -> None:
+        key = self._validate_key(key)
+
         if (existing := self._get(session,key)) is not None:
             existing.value = value
         else:
@@ -53,5 +63,7 @@ class ConfigResolver():
         session.commit()
 
     def _unset(self, session: Session, key: str) -> None:
+        key = self._validate_key(key)
+
         session.delete(session.query(models.Setting).get(key))
         session.commit()
