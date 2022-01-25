@@ -20,7 +20,11 @@ DEFAULT_SETTINGS = {
         "MODEL_OBJECT_KEY_DB_DBNAME":       "pred3_certs",
         "QUERYSET_MAX_RETRIES":             500,
         "QUERYSET_REMOTE_PATH":             "querysets",
-        "REMOTE_URL":                       "http://0.0.0.0:4000"
+        "REMOTE_URL":                       "http://0.0.0.0:4000",
+        "MODEL_METADATA_DATABASE_HOSTNAME": "hermes",
+        "MODEL_METADATA_DATABASE_NAME":     "forecasts3",
+        "MODEL_METADATA_DATABASE_SCHEMA":   "forecasts",
+        "MODEL_METADATA_DATABASE_TABLE":    "model",
     }
 
 REQUIRED_SETTINGS = (
