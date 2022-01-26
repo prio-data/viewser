@@ -1,6 +1,6 @@
 
 from views_storage import key_value_store
-from views_storage.backends import azure, sql 
+from views_storage.backends import azure, sql
 from views_storage.serializers import pickle
 from viewser import settings
 from viewser.storage.azure import connection_string
