@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "viewser"
-version = "5.8.0"
+version = "5.9.0"
 description = ""
 authors = ["peder2911 <pglandsverk@gmail.com>"]
 
@@ -15,7 +15,7 @@ crayons = "^0.4.0"
 click = "^8.0.1"
 tabulate = "^0.8.9"
 toolz = "^0.11.1"
-views-schema = "==2.0.0"
+views-schema = "==2.1.1"
 toml = "^0.10.2"
 colorama = "^0.4.4"
 PyMonad = "^2.4.0"
@@ -23,7 +23,7 @@ docker = "^5.0.0"
 psutil = "^5.8.0"
 strconv = "^0.4.2"
 pyarrow = "^6.0.1"
-views-storage = "^0.5.0"
+views-storage = "^1.1.0"
 
 [tool.poetry.scripts]
 viewser = "viewser.cli:viewser"
