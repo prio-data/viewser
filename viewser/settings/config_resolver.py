@@ -4,7 +4,18 @@ from sqlalchemy.orm import Session
 from . import models, exceptions, validation
 
 class ConfigResolver():
+    """
+    ConfigResolver
+    ==============
 
+    parameters:
+        sessionmaker (Callable[[], sqlalchemy.orm.Session])
+        validate_key (Callable[[str], str]) = viewser.settings.validation.validate_key
+
+    A class for managing configuration settings via a database table of
+    settings. The validate_key function can be used to make sure that keys
+    follow a certain format.
+    """
     def __init__(self,
             sessionmaker: Callable[[], Session],
             validate_key: Callable[[str],str] = validation.validate_key):
@@ -13,6 +24,19 @@ class ConfigResolver():
         self._validate_key = validate_key
 
     def get(self, key: str, default: Optional[Any] = None) -> Union[str, int, float]:
+        """
+        get
+        ===
+
+        parameters:
+            key (str): Name of the configuration setting to get
+            default (Optional[Any]): Default if setting is not set
+        returns:
+            Union[str, int, float]
+
+        Get a configuration setting, optionally with a default. If neither the
+        setting, nor a default is set, raises viewser.exceptions.ConfigurationError.
+        """
         with self._Session() as session:
             try:
                 assert (setting := self._get(session, key)) is not None
@@ -23,21 +47,61 @@ class ConfigResolver():
             else:
                 return strconv.convert(setting.value)
 
-    def set(self, key, value) -> None:
+    def set(self, key: str, value: Union[str, int, float]) -> None:
+        """
+        set
+        ===
+
+        parameters:
+            key (str)
+            value (Union[str, int, float])
+
+        Set the configuration setting key to value.
+
+        """
         with self._Session() as session:
             return self._set(session, key, value)
 
-    def unset(self, key) -> None:
+    def unset(self, key: str) -> None:
+        """
+        unset
+        =====
+
+        parameters:
+            key (str)
+
+        Delete the configuration setting key. Note: Not reversible!
+        """
         with self._Session() as session:
             return self._unset(session, key)
 
     def load(self, settings: Dict[str, Union[str, int, float]], overwrite: bool = False) -> None:
+        """
+        load
+        ====
+
+        parameters:
+            settings (Dict[str, Union[str, int, float]])
+            overwrite (bool)
+
+        Set all configuration settings from a dictionary. Overwrites existing
+        values if overwrite is True.
+        """
         with self._Session() as session:
             for key,value in settings.items():
                 if not self._exists(session, key) or overwrite:
                     self._set(session, key, value)
 
     def list(self) -> Dict[str, Union[str, int, float]]:
+        """
+        list
+        ====
+
+        returns:
+            Dict[str, Union[str, int, float]]
+
+        Get currently set configuration values
+        """
         with self._Session() as session:
             settings = session.query(models.Setting).all()
             return {s.key: s.value for s in settings}
