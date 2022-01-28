@@ -1,7 +1,29 @@
-
+import logging
+import os
+from cryptography import x509
 from psycopg2 import connect, OperationalError
 from sqlalchemy import create_engine
 from viewser import settings
+
+logger = logging.getLogger(__name__)
+
+def _cert_user() -> str:
+    """
+    Fetch the ViEWS user name. Each user authenticates to ViEWS using a username and a ViEWS signed PEM certificate.
+    The certificate, which should be installed in .postgres contains the user name as part of the CN field.
+    This fetches the user name from the certificate.
+    :return:
+    """
+
+    with open(os.path.expanduser('~/.postgresql/postgresql.crt'), 'rb') as f:
+        cert = x509.load_pem_x509_certificate(f.read())
+    common_name = cert.subject.rfc4514_string().split(',')
+    try:
+        # Extract the content of the CN field from the x509 formatted string.
+        views_user_name = [i.split('=')[1] for i in common_name if i.split('=')[0] == 'CN'][0]
+    except IndexError:
+        raise ConnectionError("Something is wrong with the ViEWS Certificate. Contact ViEWS to obtain authentication!")
+    return views_user_name
 
 def get_metadata_con():
     parameters = {
@@ -15,7 +37,11 @@ def get_metadata_con():
         parameters["user"] = user
     else:
         # Try to infer
-        parameters["user"] = "postgres"
+        try:
+            parameters["user"] = _cert_user()
+        except ConnectionError:
+            logger.warning("Failed to get cert user")
+            parameters["user"] = "postgres"
 
     if password := settings.config.get("MODEL_METADATA_DATABASE_PASSWORD", ""):
         parameters["password"] = password
