@@ -1,6 +1,8 @@
 import os
 from . import db, models, config_resolver, static
 
+os.makedirs(static.CONFIG_DIR, exist_ok = True)
+
 models.metadata.create_all(db.engine)
 config = config_resolver.ConfigResolver(db.Session)
 config.load(static.DEFAULT_SETTINGS, overwrite = False)
