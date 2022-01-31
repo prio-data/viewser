@@ -33,7 +33,6 @@ class MetadataStorageSerializer(serializer.Serializer[models.ModelMetadata, type
     def serialize(self, obj: models.ModelMetadata)-> types.JsonSerializable:
         data = obj.dict()
         return {
-                "run_id": obj.run_id,
                 "author": obj.author,
                 "values": {k: simplify_value(v) for k,v in data.items() if k not in {"run_id","author"}}
                 }
