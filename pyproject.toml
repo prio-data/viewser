@@ -1,7 +1,7 @@
 [tool.poetry]
 name = "viewser"
-version = "5.12.1"
-description = ""
+version = "5.12.2"
+description = "The Views 3 CLI tool"
 authors = ["peder2911 <pglandsverk@gmail.com>"]
 readme = "README.md"
 homepage = "https://www.github.com/prio-data/viewser"
