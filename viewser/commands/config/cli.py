@@ -1,15 +1,19 @@
+import json
+from typing import Any, Dict
 import sys
 import io
 import click
-import json
-import tabulate
 from viewser import settings
+from viewser.tui.formatting.formatters import DictFormatter
+from viewser.tui.formatting.generic_models import DictModel
 
 @click.group(name="config", short_help="configure viewser")
-def cli():
+@click.pass_obj
+def cli(obj: Dict[str,Any]):
     """
     Configure viewser
     """
+    obj["table_formatter"] = DictFormatter()
 
 @cli.command(name="interactive", short_help="interactively configure viewser")
 def config_interactive():
@@ -63,11 +67,12 @@ def config_reset():
     click.echo("Config file reset")
 
 @cli.command(name="list", short_help="show all configuration settings")
-def config_list():
+@click.pass_obj
+def config_list(obj: Dict[str, Any]):
     """
     Show all current configuration values
     """
-    click.echo(tabulate.tabulate(settings.config.list().items()))
+    click.echo(obj["table_formatter"].formatted(DictModel(values = settings.config.list().items())))
 
 @cli.command(name="unset", short_help="unset a configuration value")
 @click.confirmation_option(prompt="Unset config key?")

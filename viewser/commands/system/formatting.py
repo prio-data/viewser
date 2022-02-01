@@ -1,17 +1,15 @@
 
-import tabulate
 from views_schema import viewser as schema
-from viewser.tui.formatting import abc
+from viewser.tui.formatting import abc, conventions
 from . import models
 
 class ErrorDumpFilesTable(abc.Section[models.ErrorDumpFiles]):
     TITLE = "Error dumps"
 
     def compile_output(self, model: models.ErrorDumpFiles):
-        return tabulate.tabulate(
+        return conventions.tabulate(
                 [(i+1, f.name, str(f.size)+" bytes") for i, f in enumerate(model.files)],
-                headers = ("filename", "size"),
-                tablefmt = "pipe")
+                headers = ("filename", "size"))
 
 class DumpHeader(abc.Section[schema.Dump]):
     TITLE = "Error dump"

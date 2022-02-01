@@ -2,10 +2,9 @@
 import logging
 from typing import Optional, Dict, Any
 
-import tabulate
 from views_schema import docs as schema
 
-from viewser.tui.formatting import abc, styles
+from viewser.tui.formatting import abc, styles, conventions
 from . import wrapped_views_doc
 
 logger = logging.getLogger(__name__)
@@ -76,7 +75,7 @@ class DocumentationTableSection(DocumentationSection):
             row = self.str_str_dict(entry.dict())
             row.update(self.str_str_dict(entry.data))
             data.append(row)
-        return tabulate.tabulate(data, headers="keys", tablefmt = "pipe") + "\n"
+        return conventions.tabulate(data, headers="keys", tablefmt = "pipe") + "\n"
 
 class DocumentationFormatter(abc.Formatter[schema.ViewsDoc]):
     def formatted(self, model: schema.ViewsDoc)-> str:

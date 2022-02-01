@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "viewser"
-version = "5.12.2"
+version = "5.13.0"
 description = "The Views 3 CLI tool"
 authors = ["peder2911 <pglandsverk@gmail.com>"]
 readme = "README.md"
@@ -17,7 +17,7 @@ crayons = "^0.4.0"
 click = "^8.0.1"
 tabulate = "^0.8.9"
 toolz = "^0.11.1"
-views-schema = "^2.2.0"
+views-schema = "^2.3.0"
 toml = "^0.10.2"
 colorama = "^0.4.4"
 PyMonad = "^2.4.0"

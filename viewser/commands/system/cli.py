@@ -19,7 +19,9 @@ def error(ctx: click.Context):
     """
     Commands related to error dumps.
     """
-    ctx.obj["errors"] = models.ErrorDumpFiles.from_dir(settings.ERROR_DUMP_DIRECTORY)
+    dir = settings.config.get("ERROR_DUMP_DIRECTORY")
+    click.echo(dir)
+    ctx.obj["errors"] = models.ErrorDumpFiles.from_dir(dir)
 
 @error.command(name = "list", short_help = "show current error dumps")
 @click.pass_context
