@@ -5,6 +5,7 @@ description = "The Views 3 CLI tool"
 authors = ["peder2911 <pglandsverk@gmail.com>"]
 readme = "README.md"
 homepage = "https://www.github.com/prio-data/viewser"
+license = "CC-BY-NC"
 
 [tool.poetry.dependencies]
 python = "^3.8"
