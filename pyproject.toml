@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "viewser"
-version = "5.13.0"
+version = "5.14.0"
 description = "The Views 3 CLI tool"
 authors = ["peder2911 <pglandsverk@gmail.com>"]
 readme = "README.md"
