@@ -34,10 +34,10 @@ class Column():
     viewser transforms list / viewser transforms show $TRANSFORM_NAME
     ```
     """
-    def __init__(self, name: str, from_table: str, from_column: str, _inject = None ):
+    def __init__(self, name: str, from_loa: str, from_column: str, _inject = None ):
 
         self._name = name
-        self._from_table = from_table
+        self._from_loa = from_loa
         self._from_column = from_column
 
         inject = [] if not _inject else _inject
@@ -46,7 +46,7 @@ class Column():
                 schema.RenameOperation(arguments=[name]),
                 *inject,
                 schema.DatabaseOperation(
-                    name = from_table+"."+from_column, arguments = ["values"]
+                    name = from_loa+"."+from_column, arguments = ["values"]
                     )
             ]
 
@@ -109,7 +109,7 @@ class Column():
 
     def copy(self):
         to_inject = self.operations[1:len(self.operations)-1]
-        new = Column(self._name, self._from_table, self._from_column, _inject = to_inject)
+        new = Column(self._name, self._from_loa, self._from_column, _inject = to_inject)
         new.set_aggregation(self.aggregation)
         return new
 

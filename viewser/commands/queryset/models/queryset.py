@@ -17,14 +17,13 @@ class Queryset(schema.Queryset):
 
     parameters:
         name (str): Unique name
-        at (str): Level of analysis
+        to_loa (str): desired level of analysis
 
     example:
         queryset = (Queryset("my-queryset", "country_month")
-            .with_column(Column("a", "table-a","column-in-a")
-                .aggregate("max")
+            .with_column(Column("a", "from-loa-a", "column-a", "agg-fn-a")
                 .transform.functions.my_function())
-            .with_column(Column("b", "table-b", "column-in-b"))
+            .with_column(Column("b", "from-loa-b", "column-b", "agg-fn-b"))
 
         dataset = queryset.publish().fetch()
 
@@ -39,8 +38,8 @@ class Queryset(schema.Queryset):
     Most methods can be chained, allowing for concise, readable queryset
     definitions.
     """
-    def __init__(self, name, at):
-        super().__init__(name = name, loa = at, operations = [])
+    def __init__(self, name, loa):
+        super().__init__(name = name, loa = loa, operations = [])
 
     @util.deepcopy_self
     def with_column(self, col: column.Column):
@@ -118,5 +117,5 @@ class Queryset(schema.Queryset):
         Requires a self.push first.
         """
         logger.info(f"Fetching queryset {self.name}")
-        dataset = queryset_operations.fetch(self.name, *args, **kwargs).maybe(None, lambda x:x)
+        dataset = queryset_operations.fetch(self.name, *args, **kwargs)#.maybe(None, lambda x:x)
         return dataset
