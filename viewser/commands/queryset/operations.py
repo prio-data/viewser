@@ -11,6 +11,7 @@ from datetime import date
 import logging
 from pyarrow.lib import ArrowInvalid
 import pandas as pd
+import io
 import requests
 from toolz.functoolz import do, curry
 from pymonad.either import Either, Left, Right
@@ -20,6 +21,7 @@ from views_schema import queryset_manager as queryset_schema
 from viewser import remotes
 from viewser.error_handling import errors, error_handling
 from viewser.tui import animations
+from IPython.display import display, clear_output
 
 from . import queryset_list
 
@@ -51,31 +53,15 @@ class QuerysetOperations():
 
         """
 
-        path = f"data/{queryset_name}"
-
-        retries = 0
-
-        df = pd.DataFrame()
-
-        while retries < self._max_retries:
-            response = (remotes.request(self._remote_url+path, "GET"))
-
-            try:
-                df = pd.read_parquet(BytesIO(response.content))
-                break
-            except:
-                message = response.content.decode()
-                print(message)
-                if 'failed' in df:
-                    print('Aborting retrieval')
-
-                    break
-
-            retries += 1
-
-            time.sleep(tsleep)
-
-        return df
+        f = self._fetch(
+            self._max_retries,
+            self._remote_url,
+            queryset_name,
+            start_date, end_date)
+#        if out_file is not None:
+#            f.then(curry(do, lambda data: data.to_parquet(out_file)))
+        return f
+#        return f.either(self._error_handler.dump, Just)
 
     def list(self) -> Maybe[queryset_list.QuerysetList]:
         """
@@ -137,3 +123,70 @@ class QuerysetOperations():
             except (OSError, ArrowInvalid):
                 return Left(errors.deserialization_error(response))
 
+    def _fetch(
+            self,
+            max_retries : int,
+            base_url: str, name: str,
+            start_date: Optional[date] = None, end_date: Optional[date] = None
+            ) -> Either[viewser_schema.Dump, pd.DataFrame]:
+        """
+        _fetch
+        ======
+        Fetches queryset located at {base_url}/querysets/data/{name}
+        Args:
+            base_url(str)
+            name(str)
+            start_date(Optional[str]): Only fetch data after start_date
+            start_date(Optional[str]): Only fetch data before end_date
+        Returns:
+            Either[errors.Dump, pd.DataFrame]
+        """
+        start_date, end_date = [date.strftime("%Y-%m-%d") if date else None for date in (start_date, end_date)]
+
+        checks = [
+                    remotes.check_4xx,
+                    remotes.check_error,
+                    remotes.check_404,
+                 ]
+
+        parameters = {
+                k:v for k,v in {"start_date":start_date, "end_date":end_date}.items() if v is not None
+                }
+        parameters = Just(parameters) if len(parameters) > 0 else Nothing
+        path = f"data/{name}"
+
+        retries = 0
+        anim    = animations.LineAnimation()
+#        data    = Right(None)
+
+        failed = False
+        succeeded = False
+
+        while not (succeeded or failed):
+            if retries > 0:
+                time.sleep(5)
+
+            data = remotes.request(base_url, "GET", checks, path, parameters=parameters)
+
+            try:
+                data = pd.read_parquet(io.BytesIO(data.value.content))
+                clear_output(wait=True)
+                print(f'{retries+1}: Queryset data read successfully', end="\r")
+                succeeded = True
+            except:
+                message = data.value.content.decode()
+                clear_output(wait=True)
+                print(f'{retries+1}: {message}', end="\r")
+                if 'failed' in message:
+                    failed = True
+                    data = None
+
+            if retries > max_retries:
+                clear_output(wait=True)
+                print(f'Max attempts to retrieve exceeded ({max_retries}) : aborting retrieval', end="\r")
+                failed = True
+                data = None
+
+            retries += 1
+
+        return data

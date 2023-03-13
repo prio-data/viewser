@@ -49,8 +49,8 @@ class DocumentationCrudOperations():
         return self.show("")
 
     def show(self, name: str) -> Either[Dump, schema.ViewsDoc]:
-        return (remotes.request(self._base_url, "GET", remotes.status_checks, name)
-            .then(self._deserialize))
+        return remotes.request(self._base_url, "GET", remotes.status_checks, name).value.content.decode()#.then(self._deserialize)
+
 
     def _exists(self,name: str) -> Either[Dump, bool]:
         response = remotes.request(self._base_url, "GET", [], name)

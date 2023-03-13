@@ -109,7 +109,7 @@ class Column():
 
     def copy(self):
         to_inject = self.operations[1:len(self.operations)-1]
-        new = Column(self._name, self._from_table, self._from_column, _inject = to_inject)
+        new = Column(self._name, self._from_loa, self._from_column, _inject = to_inject)
         new.set_aggregation(self.aggregation)
         return new
 

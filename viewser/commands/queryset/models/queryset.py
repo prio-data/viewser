@@ -38,8 +38,8 @@ class Queryset(schema.Queryset):
     Most methods can be chained, allowing for concise, readable queryset
     definitions.
     """
-    def __init__(self, name, to_loa):
-        super().__init__(name = name, to_loa = to_loa, operations = [])
+    def __init__(self, name, loa):
+        super().__init__(name = name, loa = loa, operations = [])
 
     @util.deepcopy_self
     def with_column(self, col: column.Column):
@@ -117,5 +117,5 @@ class Queryset(schema.Queryset):
         Requires a self.push first.
         """
         logger.info(f"Fetching queryset {self.name}")
-        dataset = queryset_operations.fetch(self.name, *args, **kwargs).maybe(None, lambda x:x)
+        dataset = queryset_operations.fetch(self.name, *args, **kwargs)#.maybe(None, lambda x:x)
         return dataset
