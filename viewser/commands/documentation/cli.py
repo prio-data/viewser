@@ -125,13 +125,10 @@ def show_transform(
     response_dict = json.loads(obj["operations"].show(transform_name))
 
     if len(response_dict['entries'])>0:
-        response_df = pd.DataFrame.from_dict(response_dict['entries'])[['name', 'path']].sort_values(by='name').reset_index(drop=True).to_string()
+        response_df = pd.DataFrame.from_dict(response_dict['entries'])['path'].sort_values().reset_index(drop=True).to_string()
         click.echo(response_df)
     else:
-        click.echo(response_dict['name'])
-        click.echo(response_dict['data'].items())
-        for key,value in response_dict['data'].items():
-            click.echo(':'.join([key,str(value)]))
+        click.echo(response_dict['data']['docstring'])
 
 
 @transforms_cli.command(name="annotate", short_help="add documentation text")
