@@ -108,7 +108,7 @@ def list_transforms(obj: Dict[str, Any]):
     List all available transforms.
     """
     response_dict = json.loads(obj["operations"].list())['entries']
-    response_df = pd.DataFrame.from_dict(response_dict)['name'].sort_values().reset_index(drop=True).to_string()
+    response_df = pd.DataFrame.from_dict(response_dict)['path'].sort_values().reset_index(drop=True).to_string()
     click.echo(response_df)
 
 @transforms_cli.command(name="show",short_help="show details about a transform")
