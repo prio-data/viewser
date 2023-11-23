@@ -168,9 +168,9 @@ Transforms are added to columns using the `transform` method
 
 Each transform method has a general transform type, e.g. `missing` followed by a specific function with brackets for arguments.
 
-A list of availble transforms can be obtained using the viewser CLI. A notebook giving examples of what each transform does can be found XXX.
+A list of available transforms can be obtained using the viewser CLI. A notebook giving examples of what each transform does can be found at https://github.com/prio-data/views3/tree/master/examples.
 
-Note that not all transforms are available at all levels of analysis. If a transform is reuested at an innapproprite loa, the queryset will be rejected by the server and an error message detailing which columns have requested incompatible transforms and loas will be returned.
+Note that not all transforms are available at all levels of analysis. If a transform is requested at an innapproprite loa, the queryset will be rejected by the server and an error message detailing which columns have requested incompatible transforms and loas will be returned.
 
 ## Publising a queryset
 
@@ -213,6 +213,31 @@ If errors are encountered during the database fetch or transform stages, an erro
 (vi) Otherwise, all completed queryset columns are written to the cache, then assembled into a single pandas dataframe, which is compressed into parquet format and sent back to the client. The queryset is removed from the 'in-progress' database.
 
 Note that priogrid-level dataframes, even compressed, can be large and can take significant time to download.
+
+## Common viewser error messages
+
+### Validation errors
+
+When a queryset is passed to the service, it is examined by a validation function which checks for easily-detected errors. Errors found by the validator will be received immediately by the client:
+
+'validation failed with illegal aggregation functions:   [list of bad aggregation functions]' - indicates that one or more non-existent aggregations was requested
+
+'validation failed with repeated column names:   [list of repeated column names]' - indicates that one or more column names has been used more than once in the queryset definition
+
+'validation failed with non-existent transforms:   [list of bad transforms]' - indicates that one or more non-existent transforms was requested
+
+'validation failed with disallowed transform loas: [list of bad transform:loa combinations] - indicates that the transform:loa pairings in the list are illegal
+
+### Runtime errors
+
+Other kinds of error are only detectable once processing the queryset has started, so these errors may take considerably longer to appear:
+
+'db fetch failed - missing columns: [list of bad column names]' - indicates that the listed columns do not exist in the VIEWS database
+
+'db fetch failed, to_loa = country_month, columns = ['/base/<bad_loa>.ged_sb_best_sum_nokgi/country_month.sum'], exception = no such loa is available right now!' - indicates that when trying to fetch the column 'ged_sb_best_sum_nokgi', the source loa <bad_loa> does not exist
+
+'transform failed,   file (path to transform function on server), line XX, in (transform), (specific error message)' - indicates that a transform operation failed, likely because of non-sensical parameters - the specific error message gives more details
+
 
 ## Funding
 

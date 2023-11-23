@@ -179,13 +179,13 @@ class QuerysetOperations():
                 print(f'{retries+1}: {message}', end="\r")
                 if 'failed' in message:
                     failed = True
-                    data = None
+                    data = message
 
             if retries > max_retries:
                 clear_output(wait=True)
                 print(f'Max attempts to retrieve exceeded ({max_retries}) : aborting retrieval', end="\r")
                 failed = True
-                data = None
+                data = message
 
             retries += 1
 
