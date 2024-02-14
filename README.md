@@ -76,7 +76,7 @@ Show docstring for a particular transform:
 
 The full functionality of viewser is exposed via its API for use in scripts and notebooks
 
-The two fundemntal objects used to define what data is fetched by the client are the *Queryset* and the *Column*, where a 
+The two fundamental objects used to define what data is fetched by the client are the *Queryset* and the *Column*, where a 
 Queryset consists of one or more Columns. 
 
 To define a queryset, one first imports the Queryset and Column classes
@@ -134,7 +134,7 @@ If an `aggregation` is required, the user may choose from the following aggregat
 
 - `sum` (default): sums over necessary spatial and time units
 - `avg`: averages over necessary spatial and time units
-- `max`: takes the maxmimum value over necessary spatial and time units
+- `max`: takes the maximum value over necessary spatial and time units
 - `min`: takes the minimum value over necessary spatial and time units
 - `count`: counts non-zero values over necessary spatial and time units
 
@@ -238,6 +238,34 @@ Other kinds of error are only detectable once processing the queryset has starte
 
 'transform failed,   file (path to transform function on server), line XX, in (transform), (specific error message)' - indicates that a transform operation failed, likely because of non-sensical parameters - the specific error message gives more details
 
+## viewser status messages
+
+While running, viewser attempts to keep users informed of the progress of their queryset's computation. Status messages are displayed on a single self-replacing line which starts with a counter, incrementing every time the client pings the server. A queryset usually passes through two separate queues - one handles fetching of raw data from the database, the second handles transforms. A queryset which passes validation will usually be passed to the database queue. A user will see a message of the form 
+
+`Queryset [queryset name] dispatched to database queue - n columns to compute`
+
+with n the number of columns in the queryset. This message indicates that the queryset is *waiting* in the database queue.
+Once fetching of raw data has started, the message will be replaced by one of the form 
+
+`Queryset [queryset name] db fetch in progress - l of m jobs remaining`
+
+where the total number of jobs is summed over all columns and
+
+- Fetching one raw feature from the database is 1 job
+- Every transform is 1 job
+- Renaming the column after all the transforms have been done is 1 job
+
+Note that the value of m is the total number of jobs required to compute the queryset *from scratch*. If there are jobs in the cache, this shows itself by the value of l starting out less than m.
+
+If the database fetch completes without errors, the queryset will be passed to the transform queue, and a status message of the form
+
+`Queryset [queryset name] dispatched to database queue - n columns to compute`
+
+This message indicates only that the queryset is waiting in the transform queue. Once computation of transforms begins, the status message will be replaced by one of the form
+
+`Queryset [queryset name] transform in progress - l of m jobs remaining`
+
+When all transforms have completed, downloading of the completed dataframe begins. The status message at this point will cease updating, which can make it appear that the client is hung in the case of large querysets. Users are asked to be patient :) .
 
 ## Funding
 
