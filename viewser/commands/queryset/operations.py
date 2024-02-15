@@ -13,15 +13,15 @@ from pyarrow.lib import ArrowInvalid
 import pandas as pd
 import io
 import requests
-from toolz.functoolz import do, curry
 from pymonad.either import Either, Left, Right
 from pymonad.maybe import Just, Nothing, Maybe
 from views_schema import viewser as viewser_schema
 from views_schema import queryset_manager as queryset_schema
 from viewser import remotes
 from viewser.error_handling import errors, error_handling
-from viewser.tui import animations
-from IPython.display import display, clear_output
+from . import drift_detection
+
+from IPython.display import  clear_output
 
 from . import queryset_list
 
@@ -39,7 +39,7 @@ class QuerysetOperations():
         self._max_retries = max_retries
         self._error_handler = error_handler if error_handler else error_handling.ErrorDumper([])
 
-    def fetch(self, queryset_name:str, out_file: Optional[BufferedWriter] = None, start_date: Optional[date] = None, end_date: Optional[date] = None) -> Maybe[pd.DataFrame]:
+    def fetch(self, queryset_name:str, out_file: Optional[BufferedWriter] = None, start_date: Optional[date] = None, end_date: Optional[date] = None) -> pd.DataFrame:
         """
         fetch
         =====
@@ -58,10 +58,16 @@ class QuerysetOperations():
             self._remote_url,
             queryset_name,
             start_date, end_date)
-#        if out_file is not None:
-#            f.then(curry(do, lambda data: data.to_parquet(out_file)))
+
         return f
-#        return f.either(self._error_handler.dump, Just)
+
+    def fetch_with_drift_detection(self, queryset_name:str, out_file: Optional[BufferedWriter] = None, start_date: Optional[date] = None, end_date: Optional[date] = None):
+
+        df = self.fetch(queryset_name, out_file = out_file, start_date=start_date, end_date=end_date)
+
+        input_alerts = drift_detection.InputGate(df).assemble_alerts()
+
+        return df, input_alerts
 
     def list(self) -> Maybe[queryset_list.QuerysetList]:
         """
@@ -128,7 +134,7 @@ class QuerysetOperations():
             max_retries : int,
             base_url: str, name: str,
             start_date: Optional[date] = None, end_date: Optional[date] = None
-            ) -> Either[viewser_schema.Dump, pd.DataFrame]:
+            ) -> pd.DataFrame:
         """
         _fetch
         ======
@@ -156,8 +162,9 @@ class QuerysetOperations():
         path = f"data/{name}"
 
         retries = 0
-        anim    = animations.LineAnimation()
-#        data    = Right(None)
+
+        data    = None
+        message = None
 
         failed = False
         succeeded = False
