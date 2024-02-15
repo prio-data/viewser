@@ -1,8 +1,8 @@
 import numpy as np
 import pandas as pd
-from views_transform_library import utilities
-import config_drift as config
-from ForecastDrift import alarm
+#from views_transform_library import utilities
+from . import config_drift as config
+from forecastdrift import alarm
 class InputGate:
 
     def __init__(self, df):
