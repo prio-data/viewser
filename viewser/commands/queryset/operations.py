@@ -170,22 +170,22 @@ class QuerysetOperations():
 
             try:
                 data = pd.read_parquet(io.BytesIO(data.value.content))
-#                clear_output(wait=True)
-                print(f'{retries+1}: Queryset {name} read successfully')
+                print(f'\n')
+                print(f'Queryset {name} read successfully')
                 succeeded = True
             except:
                 message = data.value.content.decode()
                 if retries == 0:
-                    print(f'{retries + 1}: {message}')
+                    print(f'\n')
+                    print(f'\r {retries + 1}: {message}', flush=True, end="\r")
                 else:
-                    clear_output(wait=True)
-                    print(f'{retries+1}: {message}', end="\r")
+                    print(f'\r {retries+1}: {message}', flush=True, end="\r")
                 if 'failed' in message:
                     failed = True
                     data = message
 
             if retries > max_retries:
-                clear_output(wait=True)
+                print(f'\n')
                 print(f'Max attempts to retrieve exceeded ({max_retries}) : aborting retrieval', end="\r")
                 failed = True
                 data = message

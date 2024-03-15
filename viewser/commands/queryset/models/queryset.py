@@ -39,7 +39,75 @@ class Queryset(schema.Queryset):
     definitions.
     """
     def __init__(self, name, loa):
-        super().__init__(name = name, loa = loa, operations = [])
+        super().__init__(name=name, loa=loa, operations=[])
+
+    @classmethod
+    def from_merger(cls, querysets, name, theme=None, description=None, verbose=False):
+
+        def rename_to_string(column):
+            rename_string = ''.join([column[0].namespace, column[0].name, str(column[0].arguments)])
+            return rename_string
+
+        def database_to_string(column):
+            database_string = ''.join([column[-1].namespace, column[-1].name, str(column[-1].arguments)])
+            return database_string
+
+        def transform_to_string(column):
+            transform_string = ''.join(
+                [column[i].namespace + column[i].name + str(column[i].arguments) for i in range(1, len(column) - 1)])
+            return transform_string
+
+        loas = [queryset.loa for queryset in querysets]
+
+        if len(set(loas)) > 1:
+            raise RuntimeError(f'querysets cannot be merged - they are defined at different loas {loas}')
+
+        columns = []
+        rename_strings = []
+        database_strings = []
+        transform_strings = []
+
+        for queryset in querysets:
+            for column in queryset.operations:
+
+                rename_string = rename_to_string(column)
+                database_string = database_to_string(column)
+                transform_string = transform_to_string(column)
+
+                if len(rename_strings) == 0:
+                    rename_strings.append(rename_string)
+                    database_strings.append(database_string)
+                    transform_strings.append(transform_string)
+                    columns.append(column)
+                else:
+                    if rename_string in rename_strings:
+                        idx = rename_strings.index(rename_string)
+
+                        if database_string != database_strings[idx]:
+                            raise RuntimeError(
+                                f'querysets cannot be merged - two columns named {column[0].arguments[0]} '
+                                f'with different raw data')
+
+                        if transform_string != transform_strings[idx]:
+                            raise RuntimeError(
+                                f'querysets cannot be merged - two columns named {column[0].arguments[0]} '
+                                f'with different xforms')
+                        if verbose:
+                            print(f'Merging querysets: omitting copy of identically-defined '
+                                  f'column {column[0].arguments[0]}')
+                    else:
+                        rename_strings.append(rename_string)
+                        database_strings.append(database_string)
+                        transform_strings.append(transform_string)
+                        columns.append(column)
+
+        qs_merged = cls(name=name, loa=loas[0])
+
+        qs_merged.operations = columns
+        qs_merged.themes = [] if theme is None else [theme,]
+        qs_merged.description = description
+
+        return qs_merged
 
     @util.deepcopy_self
     def with_column(self, col: column.Column):
