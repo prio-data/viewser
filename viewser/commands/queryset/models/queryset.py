@@ -119,3 +119,18 @@ class Queryset(schema.Queryset):
         logger.info(f"Fetching queryset {self.name}")
         dataset = queryset_operations.fetch(self.name, *args, **kwargs)#.maybe(None, lambda x:x)
         return dataset
+
+    def fetch_with_drift_detection(self, *args, **kwargs):
+        """
+        fetch
+        =====
+
+        returns:
+            pandas.DataFrame
+
+        Fetch the dataset corresponding to this queryset in its current state.
+        Requires a self.push first.
+        """
+        logger.info(f"Fetching queryset {self.name}")
+        dataset = queryset_operations.fetch_with_drift_detection(self.name, *args, **kwargs)#.maybe(None, lambda x:x)
+        return dataset

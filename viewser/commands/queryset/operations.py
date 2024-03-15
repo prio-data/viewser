@@ -29,6 +29,7 @@ logger = logging.getLogger(__name__)
 
 response_json = lambda rsp: rsp.json()
 
+
 class QuerysetOperations():
 
     def __init__(self,
@@ -39,7 +40,10 @@ class QuerysetOperations():
         self._max_retries = max_retries
         self._error_handler = error_handler if error_handler else error_handling.ErrorDumper([])
 
-    def fetch(self, queryset_name:str, out_file: Optional[BufferedWriter] = None, start_date: Optional[date] = None, end_date: Optional[date] = None) -> pd.DataFrame:
+    def fetch(self, queryset_name: str,
+              out_file: Optional[BufferedWriter] = None,
+              start_date: Optional[date] = None,
+              end_date: Optional[date] = None) -> pd.DataFrame:
         """
         fetch
         =====
@@ -61,11 +65,17 @@ class QuerysetOperations():
 
         return f
 
-    def fetch_with_drift_detection(self, queryset_name:str, out_file: Optional[BufferedWriter] = None, start_date: Optional[date] = None, end_date: Optional[date] = None):
+    def fetch_with_drift_detection(self,
+                                   queryset_name: str,
+                                   out_file: Optional[BufferedWriter] = None,
+                                   start_date: Optional[date] = None,
+                                   end_date: Optional[date] = None,
+                                   drift_config_dict: Optional[dict] = None
+                                   ):
 
-        df = self.fetch(queryset_name, out_file = out_file, start_date=start_date, end_date=end_date)
+        df = self.fetch(queryset_name, out_file=out_file, start_date=start_date, end_date=end_date)
 
-        input_alerts = drift_detection.InputGate(df).assemble_alerts()
+        input_alerts = drift_detection.InputGate(df, drift_config_dict).assemble_alerts()
 
         return df, input_alerts
 
@@ -147,7 +157,7 @@ class QuerysetOperations():
         Returns:
             Either[errors.Dump, pd.DataFrame]
         """
-        start_date, end_date = [date.strftime("%Y-%m-%d") if date else None for date in (start_date, end_date)]
+#        start_date, end_date = [date.strftime("%Y-%m-%d") if date else None for date in (start_date, end_date)]
 
         checks = [
                     remotes.check_4xx,
@@ -176,7 +186,8 @@ class QuerysetOperations():
             data = remotes.request(base_url, "GET", checks, path, parameters=parameters)
 
             try:
-                data = pd.read_parquet(io.BytesIO(data.value.content))
+                data = pd.read_parquet(io.BytesIO(data.value.content)).loc[start_date:end_date]
+                data.index = data.index.remove_unused_levels()
                 clear_output(wait=True)
                 print(f'{retries+1}: Queryset data read successfully', end="\r")
                 succeeded = True

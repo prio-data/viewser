@@ -1,48 +1,95 @@
 import numpy as np
-import pandas as pd
-#from views_transform_library import utilities
+from views_tensor_utilities import objects, mappings
+from . import utilities
 from . import config_drift as config
 from forecastdrift import alarm
+
+
 class InputGate:
 
-    def __init__(self, df):
-        self.tensor = df_to_numpy(df)
-        self.index = df.index
-        self.columns = df.columns
-        self.times, self.time_to_index, self.index_to_time = utilities.map_times(self.index)
-        self.spaces, self.space_to_index, self.index_to_space = utilities.map_times(self.index)
+    def __init__(self, df, drift_config_dict):
+        self.config_dict = drift_config_dict
+        self.tensor_container = objects.ViewsDataframe(df).to_numpy_time_space().get_numeric_tensor()
+        self.index = self.tensor_container.index
+        self.columns = self.tensor_container.columns
+        self.times = mappings.TimeUnits.from_pandas(self.index)
+        self.spaces = mappings.SpaceUnits.from_pandas(self.index)
         self.uoa_mask = self.get_valid_uoa_mask()
+        self.default_config_dict = self.get_default_config_dict()
 
     def get_valid_uoa_mask(self):
-        return ~np.where(self.tensor==-np.inf,True,False)
+        """
+        get_valid_uoa_mask
 
-    def test_global_nan_frac(self):
-        if severity:=(np.count_nonzero(np.isnan(self.tensor[self.uoa_mask]))/np.count_nonzero(self.uoa_mask))/config.threshold_global_nan_frac>1:
-            return alarm.Alarm(f"Global missingness exceeded threshold {config.threshold_global_nan_frac}",int(severity))
+        Compute a boolean mask to mask out units-of-analysis which do not exist (e.g countries that do not exist
+        in a given month)
+
+        """
+
+        return ~np.where(self.tensor_container.tensor == config.default_dne, True, False)
+
+    def get_default_config_dict(self):
+
+        return {
+            'global_missingness':  0.05,
+            'time_missingness':    0.01,
+            'space_missingness':   0.03,
+            'feature_missingness': 0.01,
+            'delta_completeness':   1.25
+
+        }
+
+
+    def test_global_nan_frac(self, threshold):
+        """
+        test_global_nan_frac
+
+        Raise alarm if global missingness fraction exceeds threshold
+
+        """
+
+        if severity := (np.count_nonzero(np.isnan(self.tensor_container.tensor[self.uoa_mask]))/
+                        np.count_nonzero(self.uoa_mask))/threshold > 1:
+            return alarm.Alarm(f"Global missingness exceeded threshold {threshold}",
+                               int(1+severity))
         else:
             return None
 
     def get_time_nan_fracs(self):
+        """
+        get_time_nan_fracs
+
+        Compute missing fractions for all time units
+
+        """
+
         time_nan_fracs = []
-        nans = np.where(np.isnan(self.tensor),1,0)
-        for itime in range(self.tensor.shape[0]):
+        nans = np.where(np.isnan(self.tensor_container.tensor), 1, 0)
+        for itime in range(self.tensor_container.tensor.shape[0]):
             time_nan_fracs.append(
-                              np.count_nonzero(nans[itime,:,:])/np.count_nonzero(self.uoa_mask[itime,:,:])
+                              np.count_nonzero(nans[itime, :, :])/np.count_nonzero(self.uoa_mask[itime, :, :])
             )
 
         return np.array(time_nan_fracs)
 
-    def test_time_nan_fracs(self):
+    def test_time_nan_fracs(self, threshold):
+        """
+        test_time_nan_fracs
 
-        results = self.get_time_nan_fracs()/config.threshold_time_unit_nan_frac
-        offenders = np.where(results>1)
+        Generate alarms for any time units whose missingness exceeds a threshold
+
+        """
+
+        results = self.get_time_nan_fracs()/threshold
+        offenders = np.where(results>1)[0]
 
         if len(offenders) > 0:
             alarms = []
-            for offender,severity in zip(offenders,results):
+            for offender, severity in zip(offenders, results):
                 al = alarm.Alarm(
-                    f"Missingness for time unit {self.index_to_time[offender]} exceeded threshold {config.threshold_time_unit_nan_frac}",
-                    int(severity))
+                    f"Missingness for time unit {self.times.index_to_time[offender]} "
+                    f"exceeded threshold {threshold}",
+                    int(1+severity))
                 alarms.append(al)
 
             return alarms
@@ -50,26 +97,40 @@ class InputGate:
             return None
 
     def get_space_nan_fracs(self):
+        """
+        get_space_nan_fracs
+
+        Compute missing fractions for all space units
+
+        """
+
         space_nan_fracs = []
-        nans = np.where(np.isnan(self.tensor), 1, 0)
-        for ispace in range(self.tensor.shape[1]):
+        nans = np.where(np.isnan(self.tensor_container.tensor), 1, 0)
+        for ispace in range(self.tensor_container.tensor.shape[1]):
             space_nan_fracs.append(
                 np.count_nonzero(nans[:, ispace, :]) / np.count_nonzero(self.uoa_mask[:, ispace, :])
             )
 
         return np.array(space_nan_fracs)
 
-    def test_space_nan_fracs(self):
+    def test_space_nan_fracs(self, threshold):
+        """
+        test_space_nan_fracs
 
-        results = self.get_space_nan_fracs() / config.threshold_space_unit_nan_frac
-        offenders = np.where(results > 1)
+        Generate alarms for any space units whose missingness exceeds a threshold
+
+        """
+
+        results = self.get_space_nan_fracs() / threshold
+        offenders = np.where(results > 1)[0]
 
         if len(offenders) > 0:
             alarms = []
             for offender, severity in zip(offenders, results):
                 al = alarm.Alarm(
-                    f"Missingness for space unit {self.index_to_space[offender]} exceeded threshold {config.threshold_space_unit_nan_frac}",
-                    int(severity))
+                    f"Missingness for space unit {self.spaces.index_to_space[offender]} "
+                    f"exceeded threshold {threshold}",
+                    int(1+severity))
                 alarms.append(al)
 
             return alarms
@@ -77,26 +138,39 @@ class InputGate:
             return None
 
     def get_feature_nan_fracs(self):
+        """
+        get_feature_nan_fracs
+
+        Compute missing fractions for all features
+
+        """
         feature_nan_fracs = []
-        nans = np.where(np.isnan(self.tensor), 1, 0)
-        for ifeature in range(self.tensor.shape[2]):
+        nans = np.where(np.isnan(self.tensor_container.tensor), 1, 0)
+        for ifeature in range(self.tensor_container.shape[2]):
             feature_nan_fracs.append(
                 np.count_nonzero(nans[:, :, ifeature]) / np.count_nonzero(self.uoa_mask[:, :, ifeature])
             )
 
         return np.array(feature_nan_fracs)
 
-    def test_feature_nan_fracs(self):
+    def test_feature_nan_fracs(self, threshold):
+        """
+        test_feature_nan_fracs
 
-        results = self.get_feature_nan_fracs() / config.threshold_feature_nan_frac
-        offenders = np.where(results > 1)
+        Generate alarms for any features whose missingness exceeds a threshold
+
+        """
+
+        results = self.get_feature_nan_fracs() / threshold
+        offenders = np.where(results > 1)[0]
 
         if len(offenders) > 0:
             alarms = []
             for offender, severity in zip(offenders, results):
                 al = alarm.Alarm(
-                    f"Missingness for feature {self.columns[offender]} exceeded threshold {config.threshold_feature_nan_frac}",
-                    int(severity))
+                    f"Missingness for feature {self.columns[offender]} "
+                    f"exceeded threshold {threshold}",
+                    int(1+severity))
                 alarms.append(al)
 
             return alarms
@@ -104,101 +178,106 @@ class InputGate:
             return None
 
     def get_delta_completeness(self):
+        """
+        get_delta_completeness
+
+        Compute delta_completenesses for every feature with the specified standard (i.e. trustworthy) and test
+        (untrustworthy) partitions.
+
+        """
+
         delta_completenesses = []
-        standard_partition, test_partition = self.partitioner()
-        standard, test = self.partition(standard_partition, test_partition)
 
-        for ifeature in range(self.tensor.shape[2]):
-            standard_nans = np.where(np.isnan(standard[:,:,ifeature]), 1, 0)
-            test_nans = np.where(np.isnan(test[:,:,ifeature]), 1, 0)
-            standard_uoa_mask = ~np.where(standard==-np.inf,True,False)
-            test_uoa_mask = ~np.where(test==-np.inf,True,False)
+        standard, test = self.partition()
 
-            standard_nan_frac = np.count_nonzero(standard_nans)/np.count_nonzero(standard_uoa_mask)
-            test_nan_frac = np.count_nonzero(test_nans)/np.count_nonzero(test_uoa_mask)
+        for ifeature in range(self.tensor_container.tensor.shape[2]):
+            standard_nans = np.where(np.isnan(standard[:, :, ifeature]), 1, 0)
+            test_nans = np.where(np.isnan(test[:, :, ifeature]), 1, 0)
 
-            delta_completenesses.append(np.abs(test_nan_frac-standard_nan_frac)/standard_nan_frac+1e-20)
+            standard_uoa_mask = ~np.where(standard == config.default_dne, True, False)
+            test_uoa_mask = ~np.where(test == config.default_dne, True, False)
+
+            standard_nan_frac = np.count_nonzero(standard_nans)/(np.count_nonzero(standard_uoa_mask)+1e-20)
+            test_nan_frac = np.count_nonzero(test_nans)/(np.count_nonzero(test_uoa_mask)+1e-20)
+
+            delta_completenesses.append(np.abs(test_nan_frac-standard_nan_frac)/(standard_nan_frac+1e-20))
 
         return np.array(delta_completenesses)
 
-    def test_delta_completeness(self):
+    def test_delta_completeness(self, threshold):
+        """
+        test_delta_completeness
 
-        results = self.get_delta_completeness()/config.threshold_delta
-        offenders = np.where(results > 1)
+        Generate alarms for any features whose delta-completeness exceeds a threshold
+
+        """
+
+        results = self.get_delta_completeness()/threshold
+        offenders = np.where(results > 1)[0]
 
         if len(offenders) > 0:
             alarms = []
             for offender, severity in zip(offenders, results):
                 al = alarm.Alarm(
-                    f"Delta-completeness for feature {self.columns[offender]} exceeded threshold {config.threshold_delta}",
-                    int(severity))
+                    f"Delta-completeness for feature {self.columns[offender]} "
+                    f"exceeded threshold {threshold}",
+                    int(1+severity))
                 alarms.append(al)
 
             return alarms
         else:
             return None
 
+    def partition(self):
+        """
+        partitioner
 
-    def partitioner(self):
+        Partition the input data tensor according to partitions in drift_config
+
+        """
+
         tend = self.times[-1]
         tboundary = tend - config.test_partition_length
         tstart = tboundary - config.standard_partition_length
 
-        return (tstart,tboundary), (tboundary, tend)
+        standard_partition, test_partition = (tstart, tboundary), (tboundary, tend)
 
-    def partition(self, standard_partition, test_partition):
-
-        standard_data = self.tensor[standard_partition[0]:standard_partition[1], :, :]
-        test_data = self.tensor[test_partition[0]:test_partition[1], :, :]
+        standard_data = self.tensor_container.tensor[standard_partition[0]:standard_partition[1], :, :]
+        test_data = self.tensor_container.tensor[test_partition[0]:test_partition[1], :, :]
 
         return standard_data, test_data
 
-
     def assemble_alerts(self):
+        """
+        assemble_alerts
+
+        Get lists of alerts generated by alert-generators
+
+        """
+
+        # override defaults
+
+        for key in self.config_dict.keys():
+            if key not in self.default_config_dict.keys():
+                raise KeyError(f'missingness {key} not in allowed missingness types:'
+                               f'{self.default_config_dict.keys()}')
+
+            else:
+                self.default_config_dict[key] = self.config_dict[key]
+
         alerts = []
-        alerts.append(self.test_global_nan_frac())
-        alerts.append(self.test_time_nan_fracs())
-        alerts.append(self.test_space_nan_fracs())
-        alerts.append(self.test_feature_nan_fracs())
-        alerts.append(self.test_delta_completeness())
+        for key in self.default_config_dict.keys():
+            if key in self.config_dict.keys():
+                match key:
+                    case 'global_missingness':
+                        alerts.append(self.test_global_nan_frac(self.default_config_dict[key]))
+                    case 'time_missingness':
+                        alerts.append(self.test_time_nan_fracs(self.default_config_dict[key]))
+                    case 'space_missingness':
+                        alerts.append(self.test_space_nan_fracs(self.default_config_dict[key]))
+                    case 'feature_missingness':
+                        alerts.append(self.test_feature_nan_fracs(self.default_config_dict[key]))
+                    case 'delta_completeness':
+                        alerts.append(self.test_delta_completeness(self.default_config_dict[key]))
 
         return alerts
-
-def df_to_numpy(df):
-    """
-    df: dataframe to be tensorised
-
-    this_hash: fileneme corresponding to hash of column's path
-
-    """
-
-    index = df.index
-    time_indices = index.levels[0].to_list()
-    space_indices = index.levels[1].to_list()
-
-    original_index_tuples = index.to_list()
-    original_values = df.values
-
-    nrow = len(original_index_tuples)
-
-    ntime = len(time_indices)
-    nspace = len(space_indices)
-    nfeature = len(df.columns)
-
-    if nrow != ntime * nspace:
-
-        if df[df == -np.inf].count() > 0:
-            raise RuntimeError(f'Default does-not-exist token {-np.inf} found in input data')
-
-        tensor = np.full((ntime, nspace, nfeature), -np.inf)
-
-        for irow in range(len(original_index_tuples)):
-            idx = original_index_tuples[irow]
-            itime = time_indices.index(idx[0])
-            ispace = space_indices.index(idx[1])
-            tensor[itime, ispace, :] = original_values[irow]
-
-    else:
-        tensor = utilities.df_to_tensor_strides(df)
-
-    return tensor
