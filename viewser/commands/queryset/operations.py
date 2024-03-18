@@ -21,7 +21,7 @@ from viewser import remotes
 from viewser.error_handling import errors, error_handling
 from . import drift_detection
 
-from IPython.display import  clear_output
+from IPython.display import clear_output
 
 from . import queryset_list
 
@@ -188,19 +188,23 @@ class QuerysetOperations():
             try:
                 data = pd.read_parquet(io.BytesIO(data.value.content)).loc[start_date:end_date]
                 data.index = data.index.remove_unused_levels()
-                clear_output(wait=True)
-                print(f'{retries+1}: Queryset data read successfully', end="\r")
+                print(f'\n')
+                print(f'Queryset {name} read successfully')
+
                 succeeded = True
             except:
                 message = data.value.content.decode()
-                clear_output(wait=True)
-                print(f'{retries+1}: {message}', end="\r")
+                if retries == 0:
+                    print(f'\n')
+                    print(f'\r {retries + 1}: {message}', flush=True, end="\r")
+                else:
+                    print(f'\r {retries+1}: {message}', flush=True, end="\r")
                 if 'failed' in message:
                     failed = True
                     data = message
 
             if retries > max_retries:
-                clear_output(wait=True)
+                print(f'\n')
                 print(f'Max attempts to retrieve exceeded ({max_retries}) : aborting retrieval', end="\r")
                 failed = True
                 data = message
