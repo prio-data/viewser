@@ -156,11 +156,11 @@ class QuerysetOperations():
         path = f"data/{name}"
 
         retries = 0
-        anim    = animations.LineAnimation()
-#        data    = Right(None)
 
         failed = False
         succeeded = False
+        last_line_length = 0
+        space = ' '
 
         while not (succeeded or failed):
             if retries > 0:
@@ -170,23 +170,45 @@ class QuerysetOperations():
 
             try:
                 data = pd.read_parquet(io.BytesIO(data.value.content))
-                print(f'\n')
-                print(f'Queryset {name} read successfully')
+
+                message_string = f'{retries + 1}: Queryset {name} read successfully'
+                new_line_length = len(message_string)
+                pad = last_line_length - new_line_length
+                last_line_length = new_line_length
+
+                if pad > 0:
+                    print(f'{retries+1}: Queryset {name} read successfully {(pad + 1)*space}')
+                else:
+                    print(f'{retries + 1}: Queryset {name} read successfully')
+
                 succeeded = True
             except:
                 message = data.value.content.decode()
                 if retries == 0:
-                    print(f'\n')
-                    print(f'\r {retries + 1}: {message}', flush=True, end="\r")
+
+                    message_string = f'{retries + 1}: {message}'
+                    last_line_length = len(message_string)
                 else:
-                    print(f'\r {retries+1}: {message}', flush=True, end="\r")
+
+                    message_string = f'{retries + 1}: {message}'
+                    new_line_length = len(message_string)
+                    pad = last_line_length - new_line_length
+                    last_line_length = new_line_length
+
+                    if pad > 0:
+                        print(f'{retries + 1}: {message} {(pad + 1)*space}', end="\r")
+                    else:
+                        print(f'{retries + 1}: {message}', end="\r")
+
                 if 'failed' in message:
                     failed = True
                     data = message
 
             if retries > max_retries:
-                print(f'\n')
-                print(f'Max attempts to retrieve exceeded ({max_retries}) : aborting retrieval', end="\r")
+
+                clear_output(wait=True)
+                print(f'Max attempts ({max_retries}) to retrieve {name} exceeded: aborting retrieval', end="\r")
+
                 failed = True
                 data = message
 
