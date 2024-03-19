@@ -198,7 +198,7 @@ class QuerysetOperations():
                     print(f'\n')
                     print(f'\r {retries + 1}: {message}', flush=True, end="\r")
                 else:
-                    print(f'\r {retries+1}: {message}', flush=True, end="\r")
+                    print(f'\r {retries + 1}: {message}', flush=True, end="\r")
                 if 'failed' in message:
                     failed = True
                     data = message

@@ -1,17 +1,31 @@
 import numpy as np
 from views_tensor_utilities import objects, mappings
-from . import utilities
 from . import config_drift as config
-from forecastdrift import alarm
+import datetime
+
+
+class Alarm:
+    def __repr__(self):
+        return f"Alarm: {self.message} Severity: {self.severity} Timestamp: {self.timestamp}"
+
+    def __str__(self):
+        return f"Alarm: {self.message} Severity: {self.severity} Timestamp: {self.timestamp}"
+
+    def __init__(self, message, severity=1):
+        self.message = message
+        self.severity = severity
+        self.timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
 
 class InputGate:
 
     def __init__(self, df, drift_config_dict):
         self.config_dict = drift_config_dict
-        self.tensor_container = objects.ViewsDataframe(df).to_numpy_time_space().get_numeric_tensor()
+        self.tensor_container = objects.ViewsDataframe(df).to_numpy_time_space()
+        self.numeric_part = self.tensor_container.get_numeric_part()
+        self.tensor = self.numeric_part.tensor
         self.index = self.tensor_container.index
-        self.columns = self.tensor_container.columns
+        self.columns = self.numeric_part.columns
         self.times = mappings.TimeUnits.from_pandas(self.index)
         self.spaces = mappings.SpaceUnits.from_pandas(self.index)
         self.uoa_mask = self.get_valid_uoa_mask()
@@ -26,7 +40,7 @@ class InputGate:
 
         """
 
-        return ~np.where(self.tensor_container.tensor == config.default_dne, True, False)
+        return ~np.where(self.tensor == config.default_dne, True, False)
 
     def get_default_config_dict(self):
 
@@ -35,10 +49,11 @@ class InputGate:
             'time_missingness':    0.01,
             'space_missingness':   0.03,
             'feature_missingness': 0.01,
-            'delta_completeness':   1.25
+            'delta_completeness':   1.25,
+            'standard_partition_length': 10,
+            'test_partition_length': 1
 
         }
-
 
     def test_global_nan_frac(self, threshold):
         """
@@ -48,10 +63,10 @@ class InputGate:
 
         """
 
-        if severity := (np.count_nonzero(np.isnan(self.tensor_container.tensor[self.uoa_mask]))/
+        if severity := (np.count_nonzero(np.isnan(self.tensor[self.uoa_mask]))/
                         np.count_nonzero(self.uoa_mask))/threshold > 1:
-            return alarm.Alarm(f"Global missingness exceeded threshold {threshold}",
-                               int(1+severity))
+            return Alarm(f"Global missingness exceeded threshold {threshold}",
+                         int(1+severity))
         else:
             return None
 
@@ -64,8 +79,8 @@ class InputGate:
         """
 
         time_nan_fracs = []
-        nans = np.where(np.isnan(self.tensor_container.tensor), 1, 0)
-        for itime in range(self.tensor_container.tensor.shape[0]):
+        nans = np.where(np.isnan(self.tensor), 1, 0)
+        for itime in range(self.tensor.shape[0]):
             time_nan_fracs.append(
                               np.count_nonzero(nans[itime, :, :])/np.count_nonzero(self.uoa_mask[itime, :, :])
             )
@@ -86,7 +101,7 @@ class InputGate:
         if len(offenders) > 0:
             alarms = []
             for offender, severity in zip(offenders, results):
-                al = alarm.Alarm(
+                al = Alarm(
                     f"Missingness for time unit {self.times.index_to_time[offender]} "
                     f"exceeded threshold {threshold}",
                     int(1+severity))
@@ -105,8 +120,8 @@ class InputGate:
         """
 
         space_nan_fracs = []
-        nans = np.where(np.isnan(self.tensor_container.tensor), 1, 0)
-        for ispace in range(self.tensor_container.tensor.shape[1]):
+        nans = np.where(np.isnan(self.tensor), 1, 0)
+        for ispace in range(self.tensor.shape[1]):
             space_nan_fracs.append(
                 np.count_nonzero(nans[:, ispace, :]) / np.count_nonzero(self.uoa_mask[:, ispace, :])
             )
@@ -127,7 +142,7 @@ class InputGate:
         if len(offenders) > 0:
             alarms = []
             for offender, severity in zip(offenders, results):
-                al = alarm.Alarm(
+                al = Alarm(
                     f"Missingness for space unit {self.spaces.index_to_space[offender]} "
                     f"exceeded threshold {threshold}",
                     int(1+severity))
@@ -145,8 +160,8 @@ class InputGate:
 
         """
         feature_nan_fracs = []
-        nans = np.where(np.isnan(self.tensor_container.tensor), 1, 0)
-        for ifeature in range(self.tensor_container.shape[2]):
+        nans = np.where(np.isnan(self.tensor), 1, 0)
+        for ifeature in range(self.tensor.shape[2]):
             feature_nan_fracs.append(
                 np.count_nonzero(nans[:, :, ifeature]) / np.count_nonzero(self.uoa_mask[:, :, ifeature])
             )
@@ -167,7 +182,7 @@ class InputGate:
         if len(offenders) > 0:
             alarms = []
             for offender, severity in zip(offenders, results):
-                al = alarm.Alarm(
+                al = Alarm(
                     f"Missingness for feature {self.columns[offender]} "
                     f"exceeded threshold {threshold}",
                     int(1+severity))
@@ -190,7 +205,7 @@ class InputGate:
 
         standard, test = self.partition()
 
-        for ifeature in range(self.tensor_container.tensor.shape[2]):
+        for ifeature in range(self.tensor.shape[2]):
             standard_nans = np.where(np.isnan(standard[:, :, ifeature]), 1, 0)
             test_nans = np.where(np.isnan(test[:, :, ifeature]), 1, 0)
 
@@ -213,12 +228,13 @@ class InputGate:
         """
 
         results = self.get_delta_completeness()/threshold
+
         offenders = np.where(results > 1)[0]
 
         if len(offenders) > 0:
             alarms = []
             for offender, severity in zip(offenders, results):
-                al = alarm.Alarm(
+                al = Alarm(
                     f"Delta-completeness for feature {self.columns[offender]} "
                     f"exceeded threshold {threshold}",
                     int(1+severity))
@@ -236,14 +252,18 @@ class InputGate:
 
         """
 
-        tend = self.times[-1]
-        tboundary = tend - config.test_partition_length
-        tstart = tboundary - config.standard_partition_length
+        tend = self.times.times[-1]
+        tboundary = tend - self.default_config_dict['test_partition_length']
+        tstart = tboundary - self.default_config_dict['standard_partition_length']
 
-        standard_partition, test_partition = (tstart, tboundary), (tboundary, tend)
+        tstart_index = self.times.time_to_index[tstart]
+        tboundary_index = self.times.time_to_index[tboundary]
+        tend_index = self.times.time_to_index[tend]
 
-        standard_data = self.tensor_container.tensor[standard_partition[0]:standard_partition[1], :, :]
-        test_data = self.tensor_container.tensor[test_partition[0]:test_partition[1], :, :]
+        standard_partition, test_partition = (tstart_index, tboundary_index), (tboundary_index, tend_index)
+
+        standard_data = self.tensor[standard_partition[0]:standard_partition[1], :, :]
+        test_data = self.tensor[test_partition[0]:test_partition[1], :, :]
 
         return standard_data, test_data
 
