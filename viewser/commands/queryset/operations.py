@@ -170,6 +170,7 @@ class QuerysetOperations():
 
             try:
                 data = pd.read_parquet(io.BytesIO(data.value.content))
+
                 message_string = f'{retries + 1}: Queryset {name} read successfully'
                 new_line_length = len(message_string)
                 pad = last_line_length - new_line_length
@@ -179,10 +180,12 @@ class QuerysetOperations():
                     print(f'{retries+1}: Queryset {name} read successfully {(pad + 1)*space}')
                 else:
                     print(f'{retries + 1}: Queryset {name} read successfully')
+
                 succeeded = True
             except:
                 message = data.value.content.decode()
                 if retries == 0:
+
                     message_string = f'{retries + 1}: {message}'
                     last_line_length = len(message_string)
                 else:
@@ -202,8 +205,10 @@ class QuerysetOperations():
                     data = message
 
             if retries > max_retries:
+
                 clear_output(wait=True)
                 print(f'Max attempts ({max_retries}) to retrieve {name} exceeded: aborting retrieval', end="\r")
+
                 failed = True
                 data = message
 
