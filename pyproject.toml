@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "viewser"
-version = "6.1.1"
+version = "6.2.0"
 description = "The Views 3 CLI tool"
 authors = ["peder2911 <pglandsverk@gmail.com>"]
 readme = "README.md"
@@ -27,6 +27,7 @@ psutil = "^5.8.0"
 strconv = "^0.4.2"
 pyarrow = ">9.0.0"
 views-storage = "^1.1.0"
+tqdm = "^4.66.0"
 
 [tool.poetry.scripts]
 viewser = "viewser.cli:viewser"
