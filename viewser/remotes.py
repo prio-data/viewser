@@ -46,6 +46,9 @@ def make_request(
         .maybe(request_kwargs, curry(update_kwargs, request_kwargs))
         )
 
+    print(request_args)
+    print(request_kwargs)
+
     try:
         response = requests.request(*request_args,**request_kwargs)
     except requests.exceptions.ConnectionError:
@@ -189,6 +192,7 @@ def request(
     data.then(str).then(lambda r: f"POSTing {r}").then(logger.debug)
 
     url = make_url(base_url, path, parameters)
+    print('url:',url)
     response = url.then(curry(make_request, method = method, json_data = data))
     return compose_checks(checks)(response)
 
