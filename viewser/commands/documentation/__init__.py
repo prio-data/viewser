@@ -1,1 +1,1 @@
-from .cli import tables_cli, transforms_cli
+from .cli import features_cli, transforms_cli, transform_cli
