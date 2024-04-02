@@ -4,91 +4,42 @@ from typing import Dict, Any, Optional
 import click
 import pandas as pd
 import json
+import requests
 from views_schema import docs as schema
 from viewser import settings
 from . import formatting, operations
 
-@click.group(name = "tables", short_help = "show information about available tables")
-@click.pass_obj
-def tables_cli(obj: Dict[str, Any]):
-    """
-    Commands used to inspect available tables and columns.
-    """
-    obj["operations"]       = operations.DocumentationCrudOperations(settings.config_get("REMOTE_URL"), "tables")
-    obj["detail_formatter"] = formatting.DocumentationDetailFormatter()
-    obj["list_formatter"]   = formatting.DocumentationTableFormatter()
 
-@tables_cli.command(name="list", short_help="show available tables")
+@click.group(name="features", short_help="show information about available features")
 @click.pass_obj
-def list_tables(obj: Dict[str, Any]):
+def features_cli(obj: Dict[str, Any]):
     """
-    list_tables
+    Commands used to inspect available features.
+    """
+#    obj["operations"] = operations.DocumentationCrudOperations(settings.config_get("REMOTE_URL"), "features")
+    obj["detail_formatter"] = formatting.DocumentationDetailFormatter()
+    obj["list_formatter"] = formatting.DocumentationTableFormatter()
+
+
+@features_cli.command(name="list", short_help="show available features at specified loa")
+@click.argument("loa")
+@click.pass_obj
+def list_features(obj: Dict[str, Any], loa: str):
+    """
+    list_features
     ===========
 
-    Show all available tables.
+    Show all available features at specified loa.
     """
 
+    obj["operations"] = operations.DocumentationCrudOperations(settings.config_get("REMOTE_URL"),
+                                                               f"features/{loa}/")
     response_dict = json.loads(obj["operations"].list())['entries']
-    response_df = pd.DataFrame.from_dict(response_dict)['name'].sort_values().reset_index(drop=True).to_string()
+    response_df = (pd.DataFrame.from_dict(response_dict).drop(columns=['entries', 'data']).reset_index(drop=True).
+                   to_string())
 
     click.echo(response_df)
 
-@tables_cli.command(name="show", short_help="inspect table or column")
-@click.argument("table-name")
-@click.argument("column-name", required=False)
-@click.pass_obj
-def show_tables(
-        obj: Dict[str, Any],
-        table_name: str,
-        column_name: Optional[str] = None):
-    """
-    Show either a table or a column, depending on whether one argument is
-    passed (table name), or two arguments are passed (table name - column
-    name).
-    """
-    path = table_name
-
-    if column_name:
-        path += "/"+column_name
-        formatter = obj["detail_formatter"]
-    else:
-        formatter = obj["list_formatter"]
-
-    response_dict = json.loads(obj["operations"].show(path))['entries']
-
-    response_df = pd.DataFrame.from_dict(response_dict)['name'].sort_values().reset_index(drop=True).to_string()
-
-    click.echo(response_df)
-
-@tables_cli.command(name="annotate", short_help="add documentation text")
-@click.argument("content-file", type=click.File("r"))
-@click.argument("table-name")
-@click.argument("column-name", required=False)
-@click.option("--overwrite", is_flag = True, help="overwrite existing documentation")
-@click.pass_obj
-def annotate_table(
-        obj: Dict[str, Any],
-        content_file: io.BufferedReader,
-        table_name: str,
-        column_name: str,
-        overwrite: bool):
-    """
-    Annotate a table or a column. To annotate a table, pass a single argument
-    following the file containing the annotation. To annotate a column, pass
-    two arguments.
-    """
-
-    path = table_name
-    if column_name:
-        path += "/"+column_name
-        formatter = obj["detail_formatter"]
-    else:
-        formatter = obj["list_formatter"]
-
-    to_post = schema.PostedDocumentationPage(content = content_file.read())
-
-    click.echo(obj["operations"].post(to_post, path, overwrite = overwrite)
-        .either(obj["error_dumper"].formatted, formatter.formatted))
 
 @click.group(name="transforms")
 @click.pass_obj
@@ -101,51 +52,62 @@ def transforms_cli(obj: Dict[str, Any]):
     obj["table_formatter"] = formatting.DocumentationTableFormatter()
     obj["detail_formatter"] = formatting.FunctionDetailFormatter()
 
+
 @transforms_cli.command(name="list", short_help="show all available transforms")
 @click.pass_obj
 def list_transforms(obj: Dict[str, Any]):
     """
     List all available transforms.
     """
-    response_dict = json.loads(obj["operations"].list())['entries']
-    response_df = pd.DataFrame.from_dict(response_dict)['path'].sort_values().reset_index(drop=True).to_string()
+
+    response = requests.get(url=f'{settings.REMOTE_URL}/transforms')
+
+    response_df = pd.read_parquet(io.BytesIO(response.content))
+
     click.echo(response_df)
 
-@transforms_cli.command(name="show",short_help="show details about a transform")
-@click.argument("transform-name", type=str)
+
+@transforms_cli.command(name="at_loa", short_help="show transforms at a given loa")
+@click.argument("loa", type=str)
 @click.pass_obj
 def show_transform(
         obj: Dict[str, Any],
-        transform_name: str):
+        loa: str):
     """
     Show details about a transform, such as which arguments it takes, and
     which level of analysis it is applicable to.
     """
 
-    response_dict = json.loads(obj["operations"].show(transform_name))
+    response = requests.get(f'{settings.REMOTE_URL}/transforms/{loa}')
 
-    if len(response_dict['entries'])>0:
-        response_df = pd.DataFrame.from_dict(response_dict['entries'])['path'].sort_values().reset_index(drop=True).to_string()
-        click.echo(response_df)
-    else:
-        click.echo(response_dict['data']['docstring'])
+    response_df = pd.read_parquet(io.BytesIO(response.content))
+
+    click.echo(response_df)
 
 
-@transforms_cli.command(name="annotate", short_help="add documentation text")
-@click.argument("content-file", type=click.File("r"))
-@click.argument("transform-name")
-@click.option("--overwrite", is_flag = True, help="overwrite existing documentation")
+@click.group(name="transform")
 @click.pass_obj
-def annotate_transform(
-        obj: Dict[str, Any],
-        content_file: io.BufferedReader,
-        transform_name: str,
-        overwrite: bool = False):
+def transform_cli(obj: Dict[str, Any]):
     """
-    Annotate a table or a column. To annotate a table, pass a single argument
-    following the file containing the annotation. To annotate a column, pass
-    two arguments.
+    Commands used to inspect available transforms.
     """
-    to_post = schema.PostedDocumentationPage(content = content_file.read())
-    click.echo(obj["operations"].post(to_post, transform_name, overwrite=overwrite)
-        .either(obj["error_dumper"].formatted, obj["detail_formatter"].formatted))
+
+    obj["operations"] = operations.DocumentationCrudOperations(settings.config_get("REMOTE_URL"), "transform")
+    obj["table_formatter"] = formatting.DocumentationTableFormatter()
+    obj["detail_formatter"] = formatting.FunctionDetailFormatter()
+
+
+@transform_cli.command(name="show", short_help="show transform detail")
+@click.argument("transform_name", type=str)
+@click.pass_obj
+def transform(obj: Dict[str, Any], transform_name: str):
+    """
+    List all available transforms.
+    """
+
+    response = requests.get(url=f'{settings.REMOTE_URL}/transform/{transform_name}')
+
+    lines = response.content.decode().strip('"').split('\\n')
+
+    for line in lines:
+        print(line)

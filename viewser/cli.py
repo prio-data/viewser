@@ -41,8 +41,9 @@ def viewser(ctx: click.Context, debug: bool, json: bool):
 
 viewser.add_command(queryset.cli)
 viewser.add_command(config.cli)
-viewser.add_command(documentation.tables_cli)
+viewser.add_command(documentation.features_cli)
 viewser.add_command(documentation.transforms_cli)
+viewser.add_command(documentation.transform_cli)
 viewser.add_command(notebooks.cli)
 viewser.add_command(system.cli)
 viewser.add_command(help.cli)

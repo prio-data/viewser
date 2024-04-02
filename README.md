@@ -54,23 +54,25 @@ The CLI is envisaged mainly as a tool to help users with issues such as selectin
 
 ## Useful commands
 
-Show all tables in the database:
+Show all features in the database:
 
-`viewser tables list` 
+`viewser features list <loa>`
 
-Show columns in a particular table:
-
-`viewser tables show table-name`
+with <loa> being one of ['pgm', 'cm', 'pgy', 'cy', 'pg', 'c', 'am', 'a', 'ay', 'm', 'y']
 
 Show all transforms sorted by level of analysis:
 
 `viewser transforms list`
 
+Show all transforms available at a particular level of analysis:
+
+`viewser transforms at_loa <loa>`
+
+with <loa> being one of ['any', 'country_month', 'priogrid_month', 'priogrid_year']
+
 Show docstring for a particular transform:
 
-`viewser transforms show transform-name`
-
-(note that the transform name should be the full name, e.g. 'any/temporal.entropy')
+`viewser transforms show <transform-name>`
 
 ## Via API
 
