@@ -34,7 +34,7 @@ class QuerysetOperations():
         self._max_retries = max_retries
         self._error_handler = error_handler if error_handler else error_handling.ErrorDumper([])
 
-    def fetch(self, queryset_name: str) -> pd.DataFrame:
+    def fetch(self, queryset_name: str, start_date: str = None, end_date: str = None) -> pd.DataFrame:
         """
         fetch
         =====
@@ -48,10 +48,27 @@ class QuerysetOperations():
 
         """
 
+        if bool(start_date) != bool(end_date):
+            raise RuntimeError(f'You must specify either both or neither of start_date and end_date')
+
+        if start_date is not None:
+            try:
+                cast = int(start_date)
+            except:
+                raise RuntimeError(f'Unable to cast start_date value {start_date} to integer')
+
+        if end_date is not None:
+            try:
+                cast = int(end_date)
+            except:
+                raise RuntimeError(f'Unable to cast end_date value {end_date} to integer')
+
         f = self._fetch(
             self._max_retries,
             self._remote_url,
             queryset_name,
+            start_date,
+            end_date
             )
 
         return f
@@ -78,7 +95,7 @@ class QuerysetOperations():
 
         method = "POST"
 
-        url = self._remote_url + "/querysets?" + parse.urlencode({"overwrite": overwrite})
+        url = self._remote_url + "?" + parse.urlencode({"overwrite": overwrite})
 
         request_kwargs = {"headers": {}}
 
@@ -87,6 +104,8 @@ class QuerysetOperations():
         request_kwargs["headers"].update({"Content-Type": "application/json"})
 
         response = requests.request(method=method, url=url, **request_kwargs)
+
+        print('qsm url', url)
 
         return response
 
@@ -100,7 +119,7 @@ class QuerysetOperations():
 
         return response
 
-    def _fetch(self, max_retries: int, base_url: str, name: str) -> pd.DataFrame:
+    def _fetch(self, max_retries: int, base_url: str, name: str, start_date: str, end_date: str) -> pd.DataFrame:
         """
         _fetch
         ======
@@ -120,7 +139,14 @@ class QuerysetOperations():
 
             return new_line_length
 
-        path = f"data/{name}"
+        if start_date is not None:
+            path = f"data/{name}?" + parse.urlencode({"start_date": start_date, "end_date": end_date})
+            url = base_url + '/' + path
+        else:
+            path = f"data/{name}"
+            url = base_url + '/' + path + '/'
+
+        print('url: ', url)
 
         empty_df = pd.DataFrame()
         retries = 0
@@ -131,8 +157,6 @@ class QuerysetOperations():
         block_size = 1024
 
         last_line_length = 0
-
-        url = base_url + '/' + path + '/'
 
         while not (succeeded or failed):
 
