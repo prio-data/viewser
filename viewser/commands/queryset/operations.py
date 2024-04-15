@@ -66,7 +66,7 @@ class QuerysetOperations():
 
         """
 
-        response = requests.request(method="GET", url=f'{self._remote_url}/querysets')
+        response = requests.request(method="GET", url=f'{self._remote_url}')
 
         qs_list = queryset_list.QuerysetList()
 
@@ -78,7 +78,9 @@ class QuerysetOperations():
 
         method = "POST"
 
-        url = self._remote_url + "/querysets?" + parse.urlencode({"overwrite": overwrite})
+        print(self._remote_url)
+
+        url = self._remote_url + "?" + parse.urlencode({"overwrite": overwrite})
 
         request_kwargs = {"headers": {}}
 
@@ -94,7 +96,7 @@ class QuerysetOperations():
 
         method = "DELETE"
 
-        url = self._remote_url + f"/querysets{name}"
+        url = self._remote_url + f"/{name}"
 
         response = requests.request(method=method, url=url)
 
