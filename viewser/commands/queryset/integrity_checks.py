@@ -195,6 +195,38 @@ def get_delta_zeroes(**kwargs):
     return np.array(delta_zeroes), index_to_feature
 
 
+def get_extreme_values(**kwargs):
+
+    tensor = kwargs['tensor']
+    index = kwargs['index']
+    test_partition_length = kwargs['test_partition_length']
+    standard_partition_length = kwargs['standard_partition_length']
+    index_to_feature = {}
+    for ifeature, feature in enumerate(kwargs['features']):
+        index_to_feature[ifeature] = feature
+
+    extreme_values = []
+
+    standard, test = partitioner(tensor, index, test_partition_length, standard_partition_length)
+    standard_non_zero = np.where(np.logical_or(standard == config.default_dne, np.isnan(standard)), np.nan, standard)
+
+    for ifeature in range(tensor.shape[2]):
+
+        standard_mean_non_zero = np.nanmean(standard_non_zero[:, :, ifeature])
+        standard_sigma_non_zero = np.nanstd(standard_non_zero[:, :, ifeature])
+
+        test_max = np.max(test[:, :, ifeature])
+
+#    extreme_values.append(abs(test_max-standard_mean_non_zero)/(standard_sigma_non_zero + 1e-20))
+
+        extreme_values.append(abs(test_max - standard_mean_non_zero)/(standard_sigma_non_zero + 1e-20))
+
+        print(standard_mean_non_zero, standard_sigma_non_zero, test_max)
+
+    print(extreme_values)
+
+    return np.array(extreme_values), index_to_feature
+
 def get_ks_drift(**kwargs):
 
     """

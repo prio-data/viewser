@@ -31,6 +31,10 @@ default_config_dict = {
                             'test_function': ic.get_delta_zeroes,
                             'message': 'feature delta_zeroes'},
 
+    'extreme_values':      {'threshold': 4.0,
+                            'test_function': ic.get_extreme_values,
+                            'message': 'feature extreme values'},
+
     'ks_drift':            {'threshold': 100.,
                             'test_function': ic.get_ks_drift,
                             'message': 'feature KS drift'},
