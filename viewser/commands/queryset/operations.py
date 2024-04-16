@@ -78,9 +78,7 @@ class QuerysetOperations():
 
         method = "POST"
 
-        print(self._remote_url)
-
-        url = self._remote_url + "?" + parse.urlencode({"overwrite": overwrite})
+        url = self._remote_url + "/querysets?" + parse.urlencode({"overwrite": overwrite})
 
         request_kwargs = {"headers": {}}
 
