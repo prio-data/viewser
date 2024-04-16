@@ -83,7 +83,7 @@ class QuerysetOperations():
 
         """
 
-        response = requests.request(method="GET", url=f'{self._remote_url}')
+        response = requests.request(method="GET", url=f'{self._remote_url}/querysets')
 
         qs_list = queryset_list.QuerysetList()
 
@@ -105,15 +105,13 @@ class QuerysetOperations():
 
         response = requests.request(method=method, url=url, **request_kwargs)
 
-        print('qsm url', url)
-
         return response
 
     def delete(self, name: str) -> requests.Response:
 
         method = "DELETE"
 
-        url = self._remote_url + f"/{name}"
+        url = self._remote_url + f"/querysets/{name}"
 
         response = requests.request(method=method, url=url)
 
@@ -141,11 +139,12 @@ class QuerysetOperations():
 
         if start_date is not None:
             path = f"data/{name}?" + parse.urlencode({"start_date": start_date, "end_date": end_date})
-            url = base_url + '/' + path
+            url = self._remote_url + '/' + path
         else:
             path = f"data/{name}"
-            url = base_url + '/' + path + '/'
+            url = self._remote_url + '/' + path
 
+        print('remote url: ', self._remote_url)
         print('url: ', url)
 
         empty_df = pd.DataFrame()
