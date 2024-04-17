@@ -83,7 +83,7 @@ class QuerysetOperations():
 
         """
 
-        response = requests.request(method="GET", url=f'{self._remote_url}/querysets')
+        response = requests.request(method="GET", url=f'{self._remote_url}')
 
         qs_list = queryset_list.QuerysetList()
 
