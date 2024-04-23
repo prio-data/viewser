@@ -48,7 +48,7 @@ def queryset_list(ctx_obj: Dict[str, Any]):
     """
     result_df = pd.DataFrame(ctx_obj["operations"].list(), columns=['querysets', ])
 
-    click.echo(result_df)
+    print(result_df)
 
 
 @cli.command(name="show", short_help="show code for a queryset")

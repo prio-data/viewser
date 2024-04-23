@@ -48,7 +48,7 @@ def list_features(obj: Dict[str, Any], loa: str):
 
     response_df = pd.DataFrame({'feature': features, 'loa hint': loas})
 
-    click.echo(response_df)
+    print(response_df)
 
 
 @click.group(name="transforms")
