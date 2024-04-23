@@ -35,7 +35,7 @@ class QuerysetOperations():
         self._max_retries = max_retries
         self._error_handler = error_handler if error_handler else error_handling.ErrorDumper([])
 
-    def fetch(self, queryset_name: str) -> pd.DataFrame:
+    def fetch(self, queryset_name: str, start_date: str = None, end_date: str = None) -> pd.DataFrame:
         """
         fetch
         =====
@@ -49,15 +49,33 @@ class QuerysetOperations():
 
         """
 
+        if bool(start_date) != bool(end_date):
+            raise RuntimeError(f'You must specify either both or neither of start_date and end_date')
+
+        if start_date is not None:
+            try:
+                start_date = int(start_date)
+                end_date = int(end_date)
+            except:
+                raise RuntimeError(f'Unable to cast start and/or end date values {start_date, end_date} to integer')
+
+            if start_date < 1 or end_date < 1:
+                raise RuntimeError(f'Start and/or end date values {start_date, end_date} less than 1')
+
+            if start_date > end_date:
+                raise RuntimeError(f'Start date {start_date} bigger than end date {end_date}')
+
         f = self._fetch(
             self._max_retries,
             self._remote_url,
             queryset_name,
+            start_date,
+            end_date
             )
 
         return f
 
-    def fetch_with_drift_detection(self, queryset_name: str, start_date: int, end_date: int, drift_config_dict:
+    def fetch_with_drift_detection(self, queryset_name: str, start_date: str, end_date: str, drift_config_dict:
                                    Optional[Dict]):
         """
         fetch_with_drift_detection
@@ -74,13 +92,7 @@ class QuerysetOperations():
 
         """
 
-        f = self._fetch(
-            self._max_retries,
-            self._remote_url,
-            queryset_name,
-            ).loc[start_date:end_date]
-
-        f.index = f.index.remove_unused_levels()
+        f = self.fetch(queryset_name, start_date, end_date)
 
         input_gate = drift_detection.InputGate(f, drift_config_dict=drift_config_dict)
 
@@ -88,23 +100,96 @@ class QuerysetOperations():
 
         return f, alerts
 
-    def list(self) -> queryset_list.QuerysetList:
+
+    def list(self):
         """
         list
         ====
 
         returns:
-            Optional[List[str]]: Returns a list of queryset name if operation succeeds.
+            Returns a list of queryset names if operation succeeds.
 
         """
 
         response = requests.request(method="GET", url=f'{self._remote_url}/querysets')
 
-        qs_list = queryset_list.QuerysetList()
+        return response.json()['querysets']
 
-        qs_list.querysets = response.content
+    def qs_json_to_code(self, json_):
 
-        return qs_list
+        allowed_fields = ['name', 'loa', 'description', 'themes', 'operations']
+        allowed_namespaces = ['base', 'trf']
+
+        for key in json_.keys():
+            if key not in allowed_fields:
+                raise RuntimeError(f'Queryset json contains unrecognised field: {key}')
+
+        lines = []
+
+        tab = '    '
+
+        line = f"(Queryset('{json_['name']}','{json_['loa']}')"
+
+        lines.append(line)
+
+        ops = json_['operations']
+
+        for column in ops:
+            for op in column[::-1]:
+                if op['namespace'] not in allowed_namespaces:
+                    raise RuntimeError(f"Queryset operation contains unrecognised namespace: {op['namespace']}")
+                if op['namespace'] == 'base':
+                    for op2 in column:
+                        if op2['namespace'] == 'trf' and op2['name'] == 'util.rename': rename = op2['arguments'][0]
+                    loa, name = op['name'].split('.')
+
+                    line = f"{tab}.with_column(Column('{rename}', from_loa='{loa}', from_column='{name}')"
+                    lines.append(line)
+                    if op['arguments'][0] != 'values':
+                        arg = op['arguments'][0]
+                        line = f"{tab}{tab}.aggregate('{arg}')"
+                        lines.append(line)
+
+                if op['namespace'] == 'trf' and op['name'] != 'util.rename':
+                    args = ','.join(op['arguments'])
+                    line = f"{tab}{tab}.transform.{op['name']}({args})"
+                    lines.append(line)
+
+            line = f"{tab}{tab})"
+            lines.append(line)
+            line = f""
+            lines.append(line)
+
+        if len(json_['themes']) > 0:
+            line = f"{tab}.with_theme('{json_['themes'][0]}')"
+            lines.append(line)
+
+        if json_['description'] is not None:
+            line = f'{tab}.describe("""{json_["description"]}""")'
+            lines.append(line)
+
+        line = f"{tab})"
+        lines.append(line)
+
+        qs_code = '\n'.join(lines)
+
+        return qs_code
+
+    def show(self, queryset: str):
+        """
+        show
+        ====
+
+        returns:
+            Returns code representing a queryset.
+
+        """
+
+        response = requests.request(method="GET", url=f'{self._remote_url}/querysets/{queryset}')
+
+        json_ = response.json()
+
+        return self.qs_json_to_code(json_)
 
     def publish(self, queryset: queryset_schema.Queryset, overwrite: bool = True) -> requests.Response:
 
@@ -126,13 +211,13 @@ class QuerysetOperations():
 
         method = "DELETE"
 
-        url = self._remote_url + f"/querysets{name}"
+        url = self._remote_url + f"/querysets/{name}"
 
         response = requests.request(method=method, url=url)
 
         return response
 
-    def _fetch(self, max_retries: int, base_url: str, name: str) -> pd.DataFrame:
+    def _fetch(self, max_retries: int, base_url: str, name: str, start_date: int, end_date: int) -> pd.DataFrame:
         """
         _fetch
         ======
@@ -152,9 +237,13 @@ class QuerysetOperations():
 
             return new_line_length
 
-        path = f"data/{name}"
+        if start_date is not None:
+            path = f"data/{name}?" + parse.urlencode({"start_date": start_date, "end_date": end_date})
+            url = self._remote_url + '/' + path
+        else:
+            path = f"data/{name}"
+            url = self._remote_url + '/' + path
 
-        empty_df = pd.DataFrame()
         retries = 0
         delay = 5
 
@@ -163,8 +252,6 @@ class QuerysetOperations():
         block_size = 1024
 
         last_line_length = 0
-
-        url = base_url + '/' + path + '/'
 
         while not (succeeded or failed):
 
@@ -198,7 +285,7 @@ class QuerysetOperations():
 
                 if 'failed' in message:
                     failed = True
-                    data = empty_df
+                    data = pd.DataFrame()
 
             if retries > max_retries:
 
@@ -206,7 +293,7 @@ class QuerysetOperations():
                 print(f'Max attempts ({max_retries}) to retrieve {name} exceeded: aborting retrieval', end="\r")
 
                 failed = True
-                data = empty_df
+                data = pd.DataFrame()
 
             retries += 1
             time.sleep(delay)

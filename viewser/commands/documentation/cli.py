@@ -30,15 +30,25 @@ def list_features(obj: Dict[str, Any], loa: str):
     ===========
 
     Show all available features at specified loa.
+
+    Response currently comes as a string - sending a df fails (empty parquet file) - reason unknown
     """
 
-    obj["operations"] = operations.DocumentationCrudOperations(settings.config_get("REMOTE_URL"),
-                                                               f"features/{loa}/")
-    response_dict = json.loads(obj["operations"].list())['entries']
-    response_df = (pd.DataFrame.from_dict(response_dict).drop(columns=['entries', 'data']).reset_index(drop=True).
-                   to_string())
+    response = requests.get(url=f'{settings.REMOTE_URL}/features/{loa}')
 
-    click.echo(response_df)
+    lines = str(response.content.decode()).strip('"').split("\\n")
+
+    features = []
+    loas = []
+
+    for line in lines[:-1]:
+        feature, loa = line.split(',')[0], line.split(',')[1]
+        features.append(feature)
+        loas.append(loa)
+
+    response_df = pd.DataFrame({'feature': features, 'loa hint': loas})
+
+    print(response_df.to_string())
 
 
 @click.group(name="transforms")
@@ -62,7 +72,10 @@ def list_transforms(obj: Dict[str, Any]):
 
     response = requests.get(url=f'{settings.REMOTE_URL}/transforms')
 
-    response_df = pd.read_parquet(io.BytesIO(response.content))
+    try:
+        response_df = pd.read_parquet(io.BytesIO(response.content))
+    except:
+        response_df = pd.DataFrame()
 
     click.echo(response_df)
 
@@ -78,9 +91,12 @@ def show_transform(
     which level of analysis it is applicable to.
     """
 
-    response = requests.get(f'{settings.REMOTE_URL}/transforms/{loa}')
+    response = requests.get(url=f'{settings.REMOTE_URL}/transforms/{loa}')
 
-    response_df = pd.read_parquet(io.BytesIO(response.content))
+    try:
+        response_df = pd.read_parquet(io.BytesIO(response.content))
+    except:
+        response_df = pd.DataFrame()
 
     click.echo(response_df)
 

@@ -185,7 +185,7 @@ class Queryset(schema.Queryset):
         Requires a self.push first.
         """
         logger.info(f"Fetching queryset {self.name}")
-        dataset = queryset_operations.fetch(self.name)
+        dataset = queryset_operations.fetch(self.name, *args, **kwargs)
         return dataset
 
     def fetch_with_drift_detection(self, *args, **kwargs):

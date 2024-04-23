@@ -1,12 +1,14 @@
 
 import datetime
 import io
+import pandas as pd
 from typing import Optional, Dict, Any
 
 import click
 from viewser import settings
 from viewser.settings import defaults
 from . import operations, formatting
+
 
 @click.group(name="queryset", short_help="queryset_operations related to querysets")
 @click.pass_obj
@@ -18,6 +20,7 @@ def cli(ctx_obj: Dict[str, Any]):
             )
     ctx_obj["table_formatter"] = formatting.QuerysetTableFormatter()
     ctx_obj["detail_formatter"] = formatting.QuerysetDetailFormatter()
+
 
 @cli.command(name="fetch", short_help="fetch data for a queryset")
 @click.argument("name")
@@ -36,22 +39,28 @@ def queryset_fetch(
     """
     ctx_obj["operations"].fetch(name, out_file)
 
+
 @cli.command(name="list", short_help="show a list of available querysets")
 @click.pass_obj
 def queryset_list(ctx_obj: Dict[str, Any]):
     """
     Show a list of available querysets.
     """
-    ctx_obj["operations"].list().then(ctx_obj["table_formatter"].formatted).then(click.echo)
+    result_df = pd.DataFrame(ctx_obj["operations"].list(), columns=['querysets', ])
 
-@cli.command(name="show", short_help="show details about a queryset")
+    print(result_df.to_string())
+
+
+@cli.command(name="show", short_help="show code for a queryset")
 @click.argument("name", type=str)
 @click.pass_obj
 def queryset_show(ctx_obj: Dict[str, Any], name: str):
     """
     Show detailed information about a queryset
     """
-    ctx_obj["operations"].show(name).then(ctx_obj["detail_formatter"].formatted).then(click.echo).then(click.echo)
+
+    click.echo(ctx_obj["operations"].show(name))
+
 
 @cli.command(name="delete", short_help="delete a queryset")
 @click.confirmation_option(prompt="Delete queryset?")
