@@ -1,4 +1,5 @@
 import logging
+import requests
 from views_schema import queryset_manager as schema
 from viewser.commands.queryset.operations import QuerysetOperations
 from viewser import settings
@@ -9,6 +10,7 @@ logger = logging.getLogger(__name__)
 queryset_operations = QuerysetOperations(
         settings.QUERYSET_URL,
         defaults.default_error_handler())
+
 
 class Queryset(schema.Queryset):
     """
@@ -40,6 +42,40 @@ class Queryset(schema.Queryset):
     """
     def __init__(self, name, loa):
         super().__init__(name=name, loa=loa, operations=[])
+
+    @classmethod
+    def from_storage(cls, name):
+
+        config = settings.config_resolver.ConfigResolver(settings.db.Session)
+
+        remote_url = config.get("REMOTE_URL")
+
+        response = requests.request(method="GET", url=f'{remote_url}/querysets/querysets/{name}')
+
+        if response.status_code == 404:
+            raise RuntimeError(f'queryset {name} does not appear to be in the queryset store')
+
+        json_ = response.json()
+
+        allowed_fields = ['name', 'loa', 'description', 'themes', 'operations']
+        allowed_namespaces = ['base', 'trf']
+
+        for key in json_.keys():
+            if key not in allowed_fields:
+                raise RuntimeError(f'Queryset json contains unrecognised field: {key}')
+
+        for column in json_['operations']:
+            for operation in column:
+                if operation['namespace'] not in allowed_namespaces:
+                    raise RuntimeError(f"Queryset operation contains unrecognised namespace: {operation['namespace']}")
+
+        qs = cls(name=json_['name'], loa=json_['loa'])
+
+        qs.operations = json_['operations']
+        qs.themes = json_['themes']
+        qs.description = json_['description']
+
+        return qs
 
     @classmethod
     def from_merger(cls, querysets, name, theme=None, description=None, verbose=False):
@@ -104,7 +140,7 @@ class Queryset(schema.Queryset):
         qs_merged = cls(name=name, loa=loas[0])
 
         qs_merged.operations = columns
-        qs_merged.themes = [] if theme is None else [theme,]
+        qs_merged.themes = [] if theme is None else [theme, ]
         qs_merged.description = description
 
         return qs_merged
@@ -186,4 +222,19 @@ class Queryset(schema.Queryset):
         """
         logger.info(f"Fetching queryset {self.name}")
         dataset = queryset_operations.fetch(self.name, *args, **kwargs)
+        return dataset
+
+    def fetch_with_drift_detection(self, *args, **kwargs):
+        """
+        fetch
+        =====
+
+        returns:
+            pandas.DataFrame
+
+        Fetch the dataset corresponding to this queryset in its current state.
+        Requires a self.push first.
+        """
+        logger.info(f"Fetching queryset {self.name}")
+        dataset = queryset_operations.fetch_with_drift_detection(self.name, *args, **kwargs)
         return dataset

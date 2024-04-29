@@ -5,7 +5,7 @@ queryset_operations
 """
 import sys
 import time
-from typing import Optional
+from typing import Optional, Dict
 from urllib import parse
 from tqdm import tqdm
 import json
@@ -19,6 +19,7 @@ from viewser.error_handling import error_handling
 from IPython.display import clear_output
 
 from . import queryset_list
+from . import drift_detection
 
 logger = logging.getLogger(__name__)
 
@@ -73,6 +74,31 @@ class QuerysetOperations():
             )
 
         return f
+
+    def fetch_with_drift_detection(self, queryset_name: str, start_date: str, end_date: str, drift_config_dict:
+                                   Optional[Dict]):
+        """
+        fetch_with_drift_detection
+        =====
+
+        parameters:
+            queryset_name (str): Name of the queryset to fetch
+            start_date: first month to include in output
+            end_data: last month to include in output
+            drift_config_dict: dictionary specifying which drift detection parameters to use
+
+        returns:
+            Dataframe corresponding to queryset (if query succeeds)
+
+        """
+
+        f = self.fetch(queryset_name, start_date, end_date)
+
+        input_gate = drift_detection.InputGate(f, drift_config_dict=drift_config_dict)
+
+        alerts = input_gate.assemble_alerts()
+
+        return f, alerts
 
     def list(self):
         """
