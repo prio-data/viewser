@@ -100,7 +100,6 @@ class QuerysetOperations():
 
         return f, alerts
 
-
     def list(self):
         """
         list

@@ -5,12 +5,12 @@ from . import config_drift as config
 import datetime
 
 
-class Alarm:
+class InputAlarm:
     def __repr__(self):
-        return f"Alarm: {self.message} Severity: {self.severity} Timestamp: {self.timestamp}"
+        return f"Input alarm: {self.message} Severity: {self.severity} Timestamp: {self.timestamp}\n"
 
     def __str__(self):
-        return f"Alarm: {self.message} Severity: {self.severity} Timestamp: {self.timestamp}"
+        return f"Input alarm: {self.message} Severity: {self.severity} Timestamp: {self.timestamp}\n"
 
     def __init__(self, message, severity=1):
         self.message = message
@@ -84,15 +84,15 @@ class Tester:
                 else:
                     offender_id = offender
 
-                al = Alarm(
-                    f"Input warning: {self.message}; offender: {offender_id}, "
-                    f"threshold: {self.threshold},",
+                al = InputAlarm(
+                    f"{self.message}; offender: {offender_id}, "
+                    f"threshold: {self.threshold}",
                     int(1+severity))
                 alarms.append(al)
 
             return alarms
         else:
-            return None
+            return f"{self.message} passed"
 
 
 class InputGate:
@@ -144,7 +144,7 @@ class InputGate:
                         pass
                 else:
                     try:
-                        dummy = self.default_config_dict[key]['threshold']
+                        _ = self.default_config_dict[key]['threshold']
                     except:
                         self.config_dict[key] = self.default_config_dict[key]
 

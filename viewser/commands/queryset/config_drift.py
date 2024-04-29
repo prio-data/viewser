@@ -11,6 +11,10 @@ default_config_dict = {
                             'test_function': ic.get_global_nan_fracs,
                             'message': 'dataset missingness'},
 
+    'global_zeros':        {'threshold': 0.95,
+                            'test_function': ic.get_global_zero_fracs,
+                            'message': 'dataset zero'},
+
     'time_missingness':    {'threshold': 0.01,
                             'test_function': ic.get_time_nan_fracs,
                             'message': 'time-unit missingness'},
@@ -22,6 +26,18 @@ default_config_dict = {
     'feature_missingness': {'threshold': 0.01,
                             'test_function': ic.get_feature_nan_fracs,
                             'message': 'feature missingness'},
+
+    'time_zeros':          {'threshold': 0.95,
+                            'test_function': ic.get_time_zero_fracs,
+                            'message': 'time-unit zero'},
+
+    'space_zeros':         {'threshold': 0.95,
+                            'test_function': ic.get_space_zero_fracs,
+                            'message': 'space-unit zero'},
+
+    'feature_zeros':       {'threshold': 0.95,
+                            'test_function': ic.get_feature_zero_fracs,
+                            'message': 'feature zero'},
 
     'delta_completeness':  {'threshold': 1.25,
                             'test_function': ic.get_delta_completeness,

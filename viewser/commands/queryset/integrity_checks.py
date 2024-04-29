@@ -54,6 +54,17 @@ def get_global_nan_fracs(**kwargs):
     return np.array([results, 0.0]), None
 
 
+def get_global_zero_fracs(**kwargs):
+
+    tensor = kwargs['tensor']
+
+    uoa_mask = get_valid_uoa_mask(tensor)
+
+    results = 1. - np.count_nonzero(tensor[uoa_mask])/np.count_nonzero(uoa_mask)
+
+    return np.array([results, 0.0]), None
+
+
 def get_time_nan_fracs(**kwargs):
     """
     get_time_nan_fracs
@@ -121,6 +132,76 @@ def get_feature_nan_fracs(**kwargs):
         feature_nan_fracs.append(np.count_nonzero(nans[:, :, ifeature]) / np.count_nonzero(uoa_mask[:, :, ifeature]))
 
     return np.array(feature_nan_fracs), index_to_feature
+
+
+def get_time_zero_fracs(**kwargs):
+    """
+    get_time_nan_fracs
+
+    Compute missing fractions for all time units
+
+    """
+
+    tensor = kwargs['tensor']
+    index = kwargs['index']
+
+    times = mappings.TimeUnits.from_pandas(index)
+
+    uoa_mask = get_valid_uoa_mask(tensor)
+
+    time_zero_fracs = []
+
+    for itime in range(tensor.shape[0]):
+        time_zero_fracs.append(1. - np.count_nonzero(tensor[itime, :, :])/np.count_nonzero(uoa_mask[itime, :, :]))
+
+    return np.array(time_zero_fracs), times.index_to_time
+
+
+def get_space_zero_fracs(**kwargs):
+    """
+    get_space_nan_fracs
+
+    Compute missing fractions for all space units
+
+    """
+
+    tensor = kwargs['tensor']
+    index = kwargs['index']
+
+    spaces = mappings.SpaceUnits.from_pandas(index)
+
+    uoa_mask = get_valid_uoa_mask(tensor)
+
+    space_zero_fracs = []
+
+    for ispace in range(tensor.shape[1]):
+        space_zero_fracs.append(1. - np.count_nonzero(tensor[:, ispace, :]) / np.count_nonzero(uoa_mask[:, ispace, :]))
+
+    return np.array(space_zero_fracs), spaces.index_to_space
+
+
+def get_feature_zero_fracs(**kwargs):
+    """
+    get_feature_nan_fracs
+
+    Compute missing fractions for all features
+
+    """
+
+    tensor = kwargs['tensor']
+    index_to_feature = {}
+    for ifeature, feature in enumerate(kwargs['features']):
+        index_to_feature[ifeature] = feature
+
+    uoa_mask = get_valid_uoa_mask(tensor)
+
+    feature_zero_fracs = []
+
+    for ifeature in range(tensor.shape[2]):
+        feature_zero_fracs.append(1. - np.count_nonzero(tensor[:, :, ifeature]) /
+                                  np.count_nonzero(uoa_mask[:, :, ifeature]))
+
+    return np.array(feature_zero_fracs), index_to_feature
 
 
 def get_delta_completeness(**kwargs):
@@ -217,15 +298,10 @@ def get_extreme_values(**kwargs):
 
         test_max = np.max(test[:, :, ifeature])
 
-#    extreme_values.append(abs(test_max-standard_mean_non_zero)/(standard_sigma_non_zero + 1e-20))
-
         extreme_values.append(abs(test_max - standard_mean_non_zero)/(standard_sigma_non_zero + 1e-20))
 
-        print(standard_mean_non_zero, standard_sigma_non_zero, test_max)
-
-    print(extreme_values)
-
     return np.array(extreme_values), index_to_feature
+
 
 def get_ks_drift(**kwargs):
 
@@ -265,7 +341,7 @@ def get_ks_drift(**kwargs):
         test_feature = test_feature[test_feature > 0]
 
         if len(standard_feature) == 0 or len(test_feature) == 0:
-            ks_pvalues.append(1e20)
+            ks_pvalues.append(1e10)
         else:
             ks_pvalues.append(1./scipy.stats.ks_2samp(standard_feature, test_feature).pvalue)
 
@@ -310,7 +386,7 @@ def get_ecod_drift(**kwargs):
     standard_panel = standard_panel[~np.isnan(standard_panel).any(axis=1)]
     test_panel = test_panel[~np.isnan(test_panel).any(axis=1)]
 
-    # eliminate =/- Infs
+    # eliminate +/- Infs
 
     standard_panel = standard_panel[np.isfinite(standard_panel).any(axis=1)]
     test_panel = test_panel[np.isfinite(test_panel).any(axis=1)]
