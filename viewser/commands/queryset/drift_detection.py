@@ -109,7 +109,7 @@ class InputGate:
 
     def __init__(self, df, drift_config_dict=None):
         self.config_dict = drift_config_dict
-        self.tensor_container = objects.ViewsDataframe(df).to_numpy_time_space()
+        self.tensor_container = objects.ViewsDataframe(df, cast_to_dtype=np.float64).to_numpy_time_space()
         self.numeric_part = self.tensor_container.get_numeric_part()
         self.tensor = self.numeric_part.tensor
         self.index = self.tensor_container.index
