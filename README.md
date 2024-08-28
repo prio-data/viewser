@@ -76,11 +76,11 @@ Show docstring for a particular transform:
 
 List querysets stored in the queryset database:
 
-`viewser querysets list`
+`viewser queryset list`
 
 Produce code required to generate a queryset
 
-`viewser querysets show <queryset-name>`
+`viewser queryset show <queryset-name>`
 
 ## Via API
 
