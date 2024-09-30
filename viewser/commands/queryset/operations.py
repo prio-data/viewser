@@ -76,7 +76,7 @@ class QuerysetOperations():
         return f
 
     def fetch_with_drift_detection(self, queryset_name: str, start_date: str, end_date: str, drift_config_dict:
-                                   Optional[Dict]):
+                                   Optional[Dict] = None, self_test: Optional[bool] = False):
         """
         fetch_with_drift_detection
         =====
@@ -92,9 +92,19 @@ class QuerysetOperations():
 
         """
 
+        self_test_data = None
+
+        if self_test:
+            try:
+                self_test_data = self.fetch("drift_detection_self_test", start_date, end_date)
+            except:
+                print(f'Attempt to fetch elf test qs failed. Self test queryset MUST be defined outside viewser')
+                raise RuntimeError
+
         f = self.fetch(queryset_name, start_date, end_date)
 
-        input_gate = drift_detection.InputGate(f, drift_config_dict=drift_config_dict)
+        input_gate = drift_detection.InputGate(f, drift_config_dict=drift_config_dict, self_test=self_test,
+                                               self_test_data=self_test_data)
 
         alerts = input_gate.assemble_alerts()
 

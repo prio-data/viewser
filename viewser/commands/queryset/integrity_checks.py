@@ -1,6 +1,6 @@
 import numpy as np
 from . import config_drift as config
-from views_tensor_utilities import mappings, objects
+from views_tensor_utilities import mappings
 import scipy
 from pyod.models.ecod import ECOD
 
@@ -18,6 +18,7 @@ def get_valid_uoa_mask(tensor):
 
 
 def partitioner(tensor, index, test_partition_length, standard_partition_length):
+
     """
     partitioner
 
@@ -43,7 +44,7 @@ def partitioner(tensor, index, test_partition_length, standard_partition_length)
     return standard_data, test_data
 
 
-def get_global_nan_fracs(**kwargs):
+def global_nan_fracs(**kwargs):
 
     tensor = kwargs['tensor']
 
@@ -54,7 +55,7 @@ def get_global_nan_fracs(**kwargs):
     return np.array([results, 0.0]), None
 
 
-def get_global_zero_fracs(**kwargs):
+def global_zero_fracs(**kwargs):
 
     tensor = kwargs['tensor']
 
@@ -65,9 +66,9 @@ def get_global_zero_fracs(**kwargs):
     return np.array([results, 0.0]), None
 
 
-def get_time_nan_fracs(**kwargs):
+def time_nan_fracs(**kwargs):
     """
-    get_time_nan_fracs
+    time_nan_fracs
 
     Compute missing fractions for all time units
 
@@ -88,9 +89,9 @@ def get_time_nan_fracs(**kwargs):
     return np.array(time_nan_fracs), times.index_to_time
 
 
-def get_space_nan_fracs(**kwargs):
+def space_nan_fracs(**kwargs):
     """
-    get_space_nan_fracs
+    space_nan_fracs
 
     Compute missing fractions for all space units
 
@@ -111,9 +112,9 @@ def get_space_nan_fracs(**kwargs):
     return np.array(space_nan_fracs), spaces.index_to_space
 
 
-def get_feature_nan_fracs(**kwargs):
+def feature_nan_fracs(**kwargs):
     """
-    get_feature_nan_fracs
+    feature_nan_fracs
 
     Compute missing fractions for all features
 
@@ -134,9 +135,9 @@ def get_feature_nan_fracs(**kwargs):
     return np.array(feature_nan_fracs), index_to_feature
 
 
-def get_time_zero_fracs(**kwargs):
+def time_zero_fracs(**kwargs):
     """
-    get_time_nan_fracs
+    time_nan_fracs
 
     Compute missing fractions for all time units
 
@@ -157,7 +158,7 @@ def get_time_zero_fracs(**kwargs):
     return np.array(time_zero_fracs), times.index_to_time
 
 
-def get_space_zero_fracs(**kwargs):
+def space_zero_fracs(**kwargs):
     """
     get_space_nan_fracs
 
@@ -180,7 +181,7 @@ def get_space_zero_fracs(**kwargs):
     return np.array(space_zero_fracs), spaces.index_to_space
 
 
-def get_feature_zero_fracs(**kwargs):
+def feature_zero_fracs(**kwargs):
     """
     get_feature_nan_fracs
 
@@ -204,7 +205,7 @@ def get_feature_zero_fracs(**kwargs):
     return np.array(feature_zero_fracs), index_to_feature
 
 
-def get_delta_completeness(**kwargs):
+def delta_completeness(**kwargs):
     """
     get_delta_completeness
 
@@ -240,7 +241,7 @@ def get_delta_completeness(**kwargs):
     return np.array(delta_completenesses), index_to_feature
 
 
-def get_delta_zeroes(**kwargs):
+def delta_zeroes(**kwargs):
     """
     get_delta_zeroes
 
@@ -276,7 +277,7 @@ def get_delta_zeroes(**kwargs):
     return np.array(delta_zeroes), index_to_feature
 
 
-def get_extreme_values(**kwargs):
+def extreme_values(**kwargs):
 
     tensor = kwargs['tensor']
     index = kwargs['index']
@@ -291,10 +292,15 @@ def get_extreme_values(**kwargs):
     standard, test = partitioner(tensor, index, test_partition_length, standard_partition_length)
     standard_non_zero = np.where(np.logical_or(standard == config.default_dne, np.isnan(standard)), np.nan, standard)
 
+#    print(standard_partition_length,test_partition_length)
+#    print('tester',standard.shape,test.shape,tensor.shape)
+
     for ifeature in range(tensor.shape[2]):
 
         standard_mean_non_zero = np.nanmean(standard_non_zero[:, :, ifeature])
         standard_sigma_non_zero = np.nanstd(standard_non_zero[:, :, ifeature])
+
+#        print(test[:, :, ifeature].shape)
 
         test_max = np.max(test[:, :, ifeature])
 
@@ -303,7 +309,7 @@ def get_extreme_values(**kwargs):
     return np.array(extreme_values), index_to_feature
 
 
-def get_ks_drift(**kwargs):
+def ks_drift(**kwargs):
 
     """
     get_ks_drift
@@ -348,7 +354,7 @@ def get_ks_drift(**kwargs):
     return np.array(ks_pvalues), index_to_feature
 
 
-def get_ecod_drift(**kwargs):
+def ecod_drift(**kwargs):
 
     """
     get_ecod_drift
