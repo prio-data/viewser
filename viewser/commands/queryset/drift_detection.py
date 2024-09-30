@@ -1,7 +1,9 @@
 import numpy as np
-import scipy
 from views_tensor_utilities import objects, mappings
 from . import config_drift as config
+from . import integrity_checks as ic
+from . import self_test as st
+#import viewser.commands.queryset.models.self_test_data as std
 import datetime
 
 
@@ -60,7 +62,10 @@ class Tester:
 
         """
 
-        results, translation_dict = self.test_function(
+#        print(self.test_function,self.test_partition_length,self.standard_partition_length,self.data.shape,
+#              self.features)
+
+        results, translation_dict = getattr(ic, self.test_function)(
                                               tensor=self.data,
                                               index=self.index,
                                               features=self.features,
@@ -107,16 +112,89 @@ class InputGate:
 
     """
 
-    def __init__(self, df, drift_config_dict=None):
+    def __init__(self, df, drift_config_dict=None, self_test=False, self_test_data=None):
         self.config_dict = drift_config_dict
-        self.tensor_container = objects.ViewsDataframe(df, cast_to_dtype=np.float64).to_numpy_time_space()
-        self.numeric_part = self.tensor_container.get_numeric_part()
+        self.default_config_dict = config.default_config_dict
+
+        if self_test:
+            self.__self_test(self_test_data)
+
+        self.tensor_container = (objects.ViewsDataframe(df, split_strategy='float_string', cast_strategy='to_64').
+                                 to_numpy_time_space())
+        self.numeric_part = self.tensor_container.get_numeric_views_tensors()[0]
         self.tensor = self.numeric_part.tensor
         self.index = self.tensor_container.index
         self.columns = self.numeric_part.columns
 
-        self.default_config_dict = config.default_config_dict
         self.testers = []
+
+    def __self_test(self, self_test_data):
+
+        """
+        ___self_test
+
+        Method driving the self-test machinery for the drift detection system
+
+        A standard dataframe is fetched and custom perturbation functions, one per integrity-checking function, are
+        called upon to perturb the standard data in ways designed to trigger alerts from the drift-detector.
+        Perturbed data is passed to the Tester method as normal and alerts are collected.
+        By design, all integrity checks should be failed. If this is not the case, it implies a problem with one
+        or more of the integrity-checking routines, or with the input data, which must be investigated.
+
+        """
+
+        self_test_container = (objects.ViewsDataframe(self_test_data,
+                                                      split_strategy='float_string',
+                                                      cast_strategy='to_64').to_numpy_time_space())
+
+        self_test_index = self_test_container.index
+        self_test_features = self_test_container.get_numeric_views_tensors()[0].columns
+
+        self_test_data = self_test_container.get_numeric_numpy_tensors()[0]
+
+        testers = []
+
+        for key in self.config_dict.keys():
+            try:
+
+                self_test_dict = self.default_config_dict[key]
+
+                self_test_dict['index'] = self_test_index
+
+                self_test_dict['test_partition_length'] = self.config_dict['test_partition_length']
+
+                self_test_dict['standard_partition_length'] = self.config_dict['standard_partition_length']
+
+                perturbed_self_test_data = getattr(st, 'perturb_'+self_test_dict['test_function'])(self_test_data,
+                                                                                                   **self_test_dict)
+
+                testers.append(Tester(test_function=self_test_dict['test_function'],
+                                      test_partition_length=self.config_dict['test_partition_length'],
+                                      standard_partition_length=self.config_dict['standard_partition_length'],
+                                      threshold=self_test_dict['threshold'],
+                                      message=self_test_dict['message'],
+                                      data=perturbed_self_test_data,
+                                      index=self_test_index,
+                                      features=self_test_features,
+                                      ))
+
+            except:
+                pass
+
+        alerts = [tester.generate_alarms() for tester in testers]
+
+        nfailures = 0
+        for alert in alerts:
+            if 'alarm' in str(alert[0]):
+                nfailures += 1
+
+        print(f'{nfailures}/{len(testers)} tests failed')
+
+        print()
+        print()
+        print('******END*******')
+        print()
+        print()
 
     def assemble_alerts(self):
         """
