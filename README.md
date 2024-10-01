@@ -248,23 +248,31 @@ Note that priogrid-level dataframes, even compressed, can be large and can take 
 
 When a queryset is passed to the service, it is examined by a validation function which checks for easily-detected errors. Errors found by the validator will be received immediately by the client:
 
-'validation failed with illegal aggregation functions:   [list of bad aggregation functions]' - indicates that one or more non-existent aggregations was requested
+    validation failed with illegal aggregation functions:   [list of bad aggregation functions] 
 
-'validation failed with repeated column names:   [list of repeated column names]' - indicates that one or more column names has been used more than once in the queryset definition
+-> indicates that one or more non-existent aggregations was requested
 
-'validation failed with non-existent transforms:   [list of bad transforms]' - indicates that one or more non-existent transforms was requested
+    validation failed with repeated column names:   [list of repeated column names]
+-> indicates that one or more column names has been used more than once in the queryset definition
 
-'validation failed with disallowed transform loas: [list of bad transform:loa combinations] - indicates that the transform:loa pairings in the list are illegal
+    validation failed with non-existent transforms:   [list of bad transforms]
+-> indicates that one or more non-existent transforms was requested
+
+    validation failed with disallowed transform loas: [list of bad transform:loa combinations]
+-> indicates that the transform:loa pairings in the list are illegal
 
 ### Runtime errors
 
 Other kinds of error are only detectable once processing the queryset has started, so these errors may take considerably longer to appear:
 
-'db fetch failed - missing columns: [list of bad column names]' - indicates that the listed columns do not exist in the VIEWS database
+    db fetch failed - missing columns: [list of bad column names]
+-> indicates that the listed columns do not exist in the VIEWS database
 
-'db fetch failed, to_loa = country_month, columns = ['/base/<bad_loa>.ged_sb_best_sum_nokgi/country_month.sum'], exception = no such loa is available right now!' - indicates that when trying to fetch the column 'ged_sb_best_sum_nokgi', the source loa <bad_loa> does not exist
+    db fetch failed, to_loa = country_month, columns = ['/base/<bad_loa>.ged_sb_best_sum_nokgi/country_month.sum'], exception = no such loa is available right now!
+-> indicates that when trying to fetch the column 'ged_sb_best_sum_nokgi', the source loa <bad_loa> does not exist
 
-'transform failed,   file (path to transform function on server), line XX, in (transform), (specific error message)' - indicates that a transform operation failed, likely because of non-sensical parameters - the specific error message gives more details
+    transform failed,   file (path to transform function on server), line XX, in (transform), (specific error message)
+-> indicates that a transform operation failed, likely because of non-sensical parameters - the specific error message gives more details
 
 ## viewser status messages
 
@@ -344,6 +352,24 @@ These partition the dataset into three partitions, defined by two integers n and
 
 
 - ecod_drift: for all features simultaneously, reports if the fraction of data-points considered outliers in the test partition exceeds that in the standard partition, according to an ECOD model (https://pyod.readthedocs.io/en/latest/_modules/pyod/models/ecod.html#ECOD) trained on the standard partition, exceeds a threshold. Threshold should be a number between 0 and 1, e.g. 0.25.
+
+### Drift-detection self-test functionality
+
+The drift-detection machinery is provided with self-testing infrastructure. 
+
+This requires a small standard queryset named 'drift_detection_self_test' which MUST have been published to the views queryset database BEFORE the self-test can be executed. This queryset should consist of a few conlict features and at least one very differently structured feature, e.g. GDP from the WDI.
+
+The self-test machinery is invoked by passing a True self-test flag in the call to the 'fetch_with_drift_detection' function, e.g.
+
+    data,alerts = qs.publish().fetch_with_drift_detection(start_date=start_date,
+                                                      end_date=end_date,
+                                                      drift_config_dict=drift_config_dict,
+                                                      self_test=True
+                                                     )
+
+For every requested drift-detection function in the drift_config_dict dictionary, the standard dataset will be copied and a perturbation particular to that function will be applied to the copy before passing it to the drift-detector, in a fashion designed to trigger an alert.
+
+If all drift-detection functions work correctly and trigger alerts, a message is printed to the terminal. If one of more of the drift-detectors fails to trigger, an error is raised with a list of offending drift-detectors. It is then up to the user to determine why the machinery failed.
 
 ## Funding
 
