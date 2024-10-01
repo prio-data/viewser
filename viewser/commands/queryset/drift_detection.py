@@ -183,18 +183,15 @@ class InputGate:
 
         alerts = [tester.generate_alarms() for tester in testers]
 
-        nfailures = 0
+        failures = []
         for alert in alerts:
-            if 'alarm' in str(alert[0]):
-                nfailures += 1
+            if 'passed' in str(alert):
+                failures.append(str(alert))
 
-        print(f'{nfailures}/{len(testers)} tests failed')
-
-        print()
-        print()
-        print('******END*******')
-        print()
-        print()
+        if len(failures) > 0:
+            raise RuntimeError(f'drift-detection self test failed: {failures}')
+        else:
+            print(f'Drift-detection self test passed')
 
     def assemble_alerts(self):
         """
