@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "viewser"
-version = "6.6.1"
+version = "6.6.2"
 description = "The Views 3 CLI tool"
 authors = ["peder2911 <pglandsverk@gmail.com>"]
 readme = "README.md"
@@ -13,7 +13,7 @@ requests = "^2.27.1"
 environs = "^9.3.1"
 pandas = "^1.4.0"
 fitin = "^0.2.0"
-pydantic = "^1.8.1"
+pydantic = "^2.0.0"
 crayons = "^0.4.0"
 click = "^8.0.1"
 tabulate = "^0.8.9"
