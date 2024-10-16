@@ -35,9 +35,10 @@ class Transform():
         self.column = column
 
     def __call__(self, *arguments):
+        arguments = [str(a) for a in arguments]
         op = schema.TransformOperation(
-                name = self.namespace + "." + self.name,
-                arguments = arguments)
+                name=self.namespace + "." + self.name,
+                arguments=arguments)
 
         column = self.column.copy()
         column._add_trf(op)
