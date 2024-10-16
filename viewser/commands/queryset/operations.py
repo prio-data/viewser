@@ -110,19 +110,19 @@ class QuerysetOperations():
 
         return f, alerts
 
-    def list(self):
-        """
-        list
-        ====
+#    def list(self):
+#        """
+#        list
+#        ====
 
-        returns:
-            Returns a list of queryset names if operation succeeds.
+#        returns:
+#            Returns a list of queryset names if operation succeeds.
 
-        """
+#        """
 
-        response = requests.request(method="GET", url=f'{self._remote_url}/querysets')
+#        response = requests.request(method="GET", url=f'{self._remote_url}/querysets')
 
-        return response.json()['querysets']
+#        return response.json()['querysets']
 
     def qs_json_to_code(self, json_):
 

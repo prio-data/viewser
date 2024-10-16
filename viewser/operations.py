@@ -8,6 +8,7 @@ from viewser import settings
 from viewser.settings import defaults
 from viewser.commands.queryset import operations
 
+
 def fetch(queryset_name: str, start_date: Optional[date] = None, end_date: Optional[date] = None) -> Optional[pd.DataFrame]:
     """
     fetch

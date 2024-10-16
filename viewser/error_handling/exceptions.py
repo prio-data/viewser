@@ -1,9 +1,7 @@
 from collections import defaultdict
 from typing import Optional
-import json
 import functools
 
-import pkg_resources
 import colorama
 import click
 

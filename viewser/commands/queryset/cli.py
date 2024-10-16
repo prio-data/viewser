@@ -2,6 +2,7 @@
 import datetime
 import io
 import pandas as pd
+import requests
 from typing import Optional, Dict, Any
 
 import click
@@ -46,9 +47,15 @@ def queryset_list(ctx_obj: Dict[str, Any]):
     """
     Show a list of available querysets.
     """
-    result_df = pd.DataFrame(ctx_obj["operations"].list(), columns=['querysets', ])
+#    result_df = pd.DataFrame(ctx_obj["operations"].list(), columns=['querysets', ])
 
-    print(result_df.to_string())
+    response = requests.get(url=f'{settings.REMOTE_URL}/querysets/querysets')
+
+    querysets = response.json()['querysets']
+
+    response_df = pd.DataFrame({'queryset_name': querysets})
+
+    print(response_df.to_string())
 
 
 @cli.command(name="show", short_help="show code for a queryset")

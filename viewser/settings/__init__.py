@@ -1,5 +1,5 @@
 import os
-from . import db, models, config_resolver, static
+from . import db, models, config_resolver, static, exceptions
 
 os.makedirs(static.CONFIG_DIR, exist_ok = True)
 
