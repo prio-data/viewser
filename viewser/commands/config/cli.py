@@ -72,7 +72,8 @@ def config_list(obj: Dict[str, Any]):
     """
     Show all current configuration values
     """
-    click.echo(obj["table_formatter"].formatted(DictModel(values = settings.config.list().items())))
+#    click.echo(obj["table_formatter"].formatted(DictModel(values = settings.config.list().items())))
+    click.echo(obj["table_formatter"].formatted(DictModel(values = settings.config.list())))
 
 @cli.command(name="unset", short_help="unset a configuration value")
 @click.confirmation_option(prompt="Unset config key?")
