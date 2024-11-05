@@ -14,11 +14,11 @@ import pandas as pd
 import io
 import requests
 from views_schema import queryset_manager as queryset_schema
-from viewser.error_handling import error_handling
+
+import viewser.settings as settings
 
 from IPython.display import clear_output
 
-from . import queryset_list
 from . import drift_detection
 
 logger = logging.getLogger(__name__)
@@ -28,12 +28,15 @@ class QuerysetOperations():
 
     def __init__(self,
                  remote_url: str,
-                 error_handler: Optional[error_handling.ErrorDumper] = None,
                  max_retries: int = sys.maxsize):
 
         self._remote_url = remote_url
         self._max_retries = max_retries
-        self._error_handler = error_handler if error_handler else error_handling.ErrorDumper([])
+
+        config = settings.config_resolver.ConfigResolver(settings.db.Session)
+
+        self.max_retries = config.get("QUERYSET_MAX_RETRIES")
+        self.delay = config.get("RETRY_FREQUENCY")
 
     def fetch(self, queryset_name: str, start_date: str = None, end_date: str = None) -> pd.DataFrame:
         """
@@ -110,96 +113,6 @@ class QuerysetOperations():
 
         return f, alerts
 
-#    def list(self):
-#        """
-#        list
-#        ====
-
-#        returns:
-#            Returns a list of queryset names if operation succeeds.
-
-#        """
-
-#        response = requests.request(method="GET", url=f'{self._remote_url}/querysets')
-
-#        return response.json()['querysets']
-
-    def qs_json_to_code(self, json_):
-
-        allowed_fields = ['name', 'loa', 'description', 'themes', 'operations']
-        allowed_namespaces = ['base', 'trf']
-
-        for key in json_.keys():
-            if key not in allowed_fields:
-                raise RuntimeError(f'Queryset json contains unrecognised field: {key}')
-
-        lines = []
-
-        tab = '    '
-
-        line = f"(Queryset('{json_['name']}','{json_['loa']}')"
-
-        lines.append(line)
-
-        ops = json_['operations']
-
-        for column in ops:
-            for op in column[::-1]:
-                if op['namespace'] not in allowed_namespaces:
-                    raise RuntimeError(f"Queryset operation contains unrecognised namespace: {op['namespace']}")
-                if op['namespace'] == 'base':
-                    for op2 in column:
-                        if op2['namespace'] == 'trf' and op2['name'] == 'util.rename': rename = op2['arguments'][0]
-                    loa, name = op['name'].split('.')
-
-                    line = f"{tab}.with_column(Column('{rename}', from_loa='{loa}', from_column='{name}')"
-                    lines.append(line)
-                    if op['arguments'][0] != 'values':
-                        arg = op['arguments'][0]
-                        line = f"{tab}{tab}.aggregate('{arg}')"
-                        lines.append(line)
-
-                if op['namespace'] == 'trf' and op['name'] != 'util.rename':
-                    args = ','.join(op['arguments'])
-                    line = f"{tab}{tab}.transform.{op['name']}({args})"
-                    lines.append(line)
-
-            line = f"{tab}{tab})"
-            lines.append(line)
-            line = f""
-            lines.append(line)
-
-        if len(json_['themes']) > 0:
-            line = f"{tab}.with_theme('{json_['themes'][0]}')"
-            lines.append(line)
-
-        if json_['description'] is not None:
-            line = f'{tab}.describe("""{json_["description"]}""")'
-            lines.append(line)
-
-        line = f"{tab})"
-        lines.append(line)
-
-        qs_code = '\n'.join(lines)
-
-        return qs_code
-
-    def show(self, queryset: str):
-        """
-        show
-        ====
-
-        returns:
-            Returns code representing a queryset.
-
-        """
-
-        response = requests.request(method="GET", url=f'{self._remote_url}/querysets/{queryset}')
-
-        json_ = response.json()
-
-        return self.qs_json_to_code(json_)
-
     def publish(self, queryset: queryset_schema.Queryset, overwrite: bool = True) -> requests.Response:
 
         method = "POST"
@@ -254,7 +167,6 @@ class QuerysetOperations():
             url = self._remote_url + '/' + path
 
         retries = 0
-        delay = 5
 
         failed = False
         succeeded = False
@@ -296,7 +208,7 @@ class QuerysetOperations():
                     failed = True
                     data = pd.DataFrame()
 
-            if retries > max_retries:
+            if retries > self.max_retries:
 
                 clear_output(wait=True)
                 print(f'Max attempts ({max_retries}) to retrieve {name} exceeded: aborting retrieval', end="\r")
@@ -305,6 +217,6 @@ class QuerysetOperations():
                 data = pd.DataFrame()
 
             retries += 1
-            time.sleep(delay)
+            time.sleep(self.delay)
 
         return data

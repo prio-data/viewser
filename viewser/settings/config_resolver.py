@@ -1,7 +1,8 @@
 from typing import Callable, Dict, Union, Any, Optional
 import strconv
 from sqlalchemy.orm import Session
-from . import models, exceptions, validation
+from . import models, validation
+
 
 class ConfigResolver():
     """
@@ -42,7 +43,7 @@ class ConfigResolver():
                 assert (setting := self._get(session, key)) is not None
             except AssertionError:
                 if default is None:
-                    raise exceptions.ConfigurationError(f"Configuration setting {key} is not set")
+                    raise RuntimeError(f"Configuration setting {key} is not set")
                 return default
             else:
                 return strconv.convert(setting.value)

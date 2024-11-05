@@ -3,13 +3,10 @@ import requests
 from views_schema import queryset_manager as schema
 from viewser.commands.queryset.operations import QuerysetOperations
 from viewser import settings
-from viewser.settings import defaults
 from . import column, util
 
 logger = logging.getLogger(__name__)
-queryset_operations = QuerysetOperations(
-        settings.QUERYSET_URL,
-        defaults.default_error_handler())
+queryset_operations = QuerysetOperations(settings.QUERYSET_URL)
 
 
 class Queryset(schema.Queryset):

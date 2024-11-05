@@ -1,3 +1,3 @@
 
 from .commands.queryset import Queryset, Column
-from .operations import fetch
+#from .operations import fetch

@@ -1,11 +1,11 @@
 import os
-from . import db, models, config_resolver, static, exceptions
+from . import db, models, config_resolver, static
 
-os.makedirs(static.CONFIG_DIR, exist_ok = True)
+os.makedirs(static.CONFIG_DIR, exist_ok=True)
 
 models.metadata.create_all(db.engine)
 config = config_resolver.ConfigResolver(db.Session)
-config.load(static.DEFAULT_SETTINGS, overwrite = False)
+config.load(static.DEFAULT_SETTINGS, overwrite=False)
 
 config_get = config.get
 
@@ -20,8 +20,10 @@ FOO = config.get("bar", "baz")
 
 # =Compatibility==========================================
 
+
 def reset_defaults():
-    config.load(static.DEFAULT_SETTINGS, overwrite = True)
+    config.load(static.DEFAULT_SETTINGS, overwrite=True)
+
 
 def configure_interactively():
     for setting in static.REQUIRED_SETTINGS:

@@ -1,20 +1,16 @@
 import json
-from typing import Any, Dict
 import sys
 import io
 import click
+import subprocess
 from viewser import settings
-from viewser.tui.formatting.formatters import DictFormatter
-from viewser.tui.formatting.generic_models import DictModel
 
 
 @click.group(name="config", short_help="configure viewser")
-@click.pass_obj
-def cli(obj: Dict[str, Any]):
+def cli():
     """
     Configure viewser
     """
-    obj["table_formatter"] = DictFormatter()
 
 
 @cli.command(name="interactive", short_help="interactively configure viewser")
@@ -37,7 +33,7 @@ def config_set(name: str, value: str, override: bool):  # pylint: disable=redefi
     overrides = True
     try:
         settings.config.get(name)
-    except settings.exceptions.ConfigurationError:
+    except:
         overrides = False
 
     if not override and overrides:
@@ -73,12 +69,28 @@ def config_reset():
 
 
 @cli.command(name="list", short_help="show all configuration settings")
-@click.pass_obj
-def config_list(obj: Dict[str, Any]):
+def config_list():
     """
     Show all current configuration values
     """
-    click.echo(obj["table_formatter"].formatted(DictModel(values=settings.config.list().items())))
+
+    pip_output = subprocess.run(["pip", "index", "versions", "viewser"], capture_output=True).stdout.decode()
+
+    indx = pip_output.split().index('INSTALLED:')
+
+    installed_ver = pip_output.split()[indx + 1]
+
+    settings.config.set("CURRENT_INSTALLED_VERSION", installed_ver)
+
+    indx = pip_output.split().index('LATEST:')
+
+    latest_ver = pip_output.split()[indx + 1]
+
+    settings.config.set("LATEST_AVAILABLE_VERSION", latest_ver)
+
+    for item in settings.config.list().items():
+        print(f'{item[0].ljust(40)}:   {item[1]}')
+        print('--------------------------------')
 
 
 @cli.command(name="unset", short_help="unset a configuration value")
