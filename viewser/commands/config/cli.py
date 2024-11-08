@@ -92,7 +92,6 @@ def config_list():
         print(f'{item[0].ljust(40)}:   {item[1]}')
         print('--------------------------------')
 
-
 @cli.command(name="unset", short_help="unset a configuration value")
 @click.confirmation_option(prompt="Unset config key?")
 @click.argument("name", type=str)
