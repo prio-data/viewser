@@ -32,7 +32,6 @@ views_tensor_utilities = ">=1.0.0"
 pyod = "<1.1.0"
 pandas = "^1.4.0"
 numpy = "^1.2.0"
-ipython = "^8.0.0"
 
 [tool.poetry.scripts]
 viewser = "viewser.cli:viewser"
