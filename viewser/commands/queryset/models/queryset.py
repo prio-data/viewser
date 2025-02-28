@@ -61,14 +61,30 @@ class Queryset(schema.Queryset):
             if key not in allowed_fields:
                 raise RuntimeError(f'Queryset json contains unrecognised field: {key}')
 
+        operations = []
         for column in json_['operations']:
+            column_operations = []
             for operation in column:
                 if operation['namespace'] not in allowed_namespaces:
                     raise RuntimeError(f"Queryset operation contains unrecognised namespace: {operation['namespace']}")
+                else:
+                    if operation['namespace'] == 'base':
+                        column_operations.append(schema.DatabaseOperation(namespace=operation['namespace'],
+                                                                          name=operation['name'],
+                                                                          arguments=operation['arguments']))
+                    elif operation['name'] == 'util.rename':
+                        column_operations.append(schema.RenameOperation(namespace=operation['namespace'],
+                                                                        name=operation['name'],
+                                                                        arguments=operation['arguments']))
+                    else:
+                        column_operations.append(schema.TransformOperation(namespace=operation['namespace'],
+                                                                           name=operation['name'],
+                                                                           arguments=operation['arguments']))
+            operations.append(column_operations)
 
         qs = cls(name=json_['name'], loa=json_['loa'])
 
-        qs.operations = json_['operations']
+        qs.operations = operations
         qs.themes = json_['themes']
         qs.description = json_['description']
 
